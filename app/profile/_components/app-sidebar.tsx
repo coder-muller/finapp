@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
+import { useEffect } from "react";
 
 const navItems = [
     { title: "Dashboard", href: "/dashboard", icon: <AreaChart /> },
@@ -26,9 +27,11 @@ export default function AppSidebar() {
 
     const { data: session, isPending } = authClient.useSession()
 
-    if (!session && !isPending) {
-        router.push("/login")
-    }
+    useEffect(() => {
+        if (!session && !isPending) {
+            onSignOut()
+        }
+    }, [session, isPending])
 
     const user = {
         name: session?.user?.name,
