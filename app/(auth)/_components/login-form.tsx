@@ -7,6 +7,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Spinner } from "@/components/ui/spinner";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const formSchema = z.object({
     email: z.email({ message: "Invalid email address" }),
@@ -14,6 +16,7 @@ const formSchema = z.object({
 })
 
 export function LoginForm() {
+    // Form
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -22,10 +25,20 @@ export function LoginForm() {
         },
     })
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        console.log(values)
+    // Functions
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        await authClient.signIn.email({
+            email: values.email,
+            password: values.password,
+            callbackURL: "/profile",
+        }, {
+            onError: (ctx) => {
+                toast.error(ctx.error.message)
+            }
+        })
     }
 
+    // Render
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

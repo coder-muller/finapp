@@ -33,8 +33,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Toaster richColors />
           {children}
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>

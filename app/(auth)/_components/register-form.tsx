@@ -7,14 +7,15 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Spinner } from "@/components/ui/spinner";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
     name: z.string().min(1, { message: "Name is required" }),
     email: z.email({ message: "Invalid email address" }),
     password: z.string()
-        .min(8, { message: "Password must be at least 8 characters long" })
-        .regex(/[A-Z]/, { message: "Password must contain at least one uppercase letter" })
-        .regex(/[^A-Za-z0-9]/, { message: "Password must contain at least one special character" }),
+        .min(8, { message: "Password must be at least 8 characters long" }),
     confirmPassword: z.string()
         .min(8, { message: "Password must be at least 8 characters long" }),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -23,6 +24,10 @@ const formSchema = z.object({
 })
 
 export function RegisterForm() {
+    // Hooks
+    const router = useRouter()
+
+    // Form
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -33,10 +38,25 @@ export function RegisterForm() {
         },
     })
 
-    function onSubmit(values: z.infer<typeof formSchema>) {
-        console.log(values)
+    // Functions
+    async function onSubmit(values: z.infer<typeof formSchema>) {
+        await authClient.signUp.email({
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            callbackURL: "/profile",
+        }, {
+            onSuccess: () => {
+                toast.success("Account created successfully")
+                router.push("/profile")
+            },
+            onError: (ctx) => {
+                toast.error(ctx.error.message)
+            }
+        })
     }
 
+    // Render
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
