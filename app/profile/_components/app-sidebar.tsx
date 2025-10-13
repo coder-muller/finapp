@@ -15,8 +15,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 const navItems = [
-    { title: "Dashboard", href: "/dashboard", icon: <AreaChart /> },
-    { title: "Investments", href: "/investments", icon: <ListTree /> },
+    { title: "Dashboard", href: "/profile/dashboard", icon: <AreaChart /> },
+    { title: "Investments", href: "/profile/investments", icon: <ListTree /> },
 ]
 
 export default function AppSidebar() {
