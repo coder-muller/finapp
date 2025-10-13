@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { investmentId } = await params;
 
     // Get investment
-    const investment = await prisma.investment.findUnique({
+    const investment = await prisma.investment.findFirst({
         where: {
             id: investmentId,
             userId: session.user.id,
@@ -72,7 +72,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const { investmentId } = await params;
 
     // Get investment
-    const investment = await prisma.investment.findUnique({
+    const investment = await prisma.investment.findFirst({
         where: {
             id: investmentId,
             userId: session.user.id,

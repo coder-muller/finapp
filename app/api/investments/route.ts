@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { Prisma } from "@/lib/generated/prisma";
 
 const newInvestmentSchema = z.object({
     // Investment Data
@@ -11,7 +12,7 @@ const newInvestmentSchema = z.object({
 
     // Transaction Data
     buyPrice: z.number().min(0, { message: "Buy price is required" }),
-    buyDate: z.date().min(new Date(), { message: "Buy date is required" }),
+    buyDate: z.coerce.date(),
     shares: z.number().min(0, { message: "Shares are required" }),
     fees: z.number().optional().nullable(),
 })
@@ -33,9 +34,9 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get("page") || "1";
 
     // Get where conditions
-    const whereConditions = {
+    const whereConditions: Prisma.InvestmentWhereInput = {
         userId: session.user.id,
-        ...(search && { OR: [{ name: { contains: search } }, { symbol: { contains: search } }] }),
+        ...(search && { OR: [{ name: { contains: search, mode: "insensitive" } }, { symbol: { contains: search, mode: "insensitive" } }] }),
     };
 
     // Get investments
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
                 type: "BUY",
                 quantity: data.shares,
                 price: data.buyPrice,
-                date: new Date(data.buyDate),
+                date: data.buyDate,
                 tax: data.fees ? data.fees : null,
             },
         })

@@ -3,12 +3,162 @@
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon } from "lucide-react";
+import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import { useInvestments } from "@/hooks/use-investments";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+
+const newInvestmentSchema = z.object({
+    symbol: z.string().min(1, { message: "Symbol is required" }),
+    name: z.string().min(1, { message: "Name is required" }),
+    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND"]),
+    buyPrice: z.coerce.number().min(0, { message: "Buy price is required" }),
+    buyDate: z.string().min(1, { message: "Buy date is required" }),
+    shares: z.coerce.number().min(0, { message: "Shares are required" }),
+    fees: z.coerce.number().optional(),
+})
+
+const updateInvestmentSchema = z.object({
+    symbol: z.string().min(1, { message: "Symbol is required" }),
+    name: z.string().min(1, { message: "Name is required" }),
+    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND"]),
+})
+
+type newInvestmentFormType = z.infer<typeof newInvestmentSchema>;
+type updateInvestmentFormType = z.infer<typeof updateInvestmentSchema>;
 
 export default function InvestmentsPage() {
+
+    // Hooks
+    const {
+        // Queries
+        investments,
+        isLoadingInvestments,
+        isErrorInvestments,
+        refetchInvestments,
+
+        // New Mutations
+        newInvestment,
+        isLoadingNewInvestment,
+        isErrorNewInvestment,
+
+        // Update Mutations
+        updateInvestment,
+        isLoadingUpdateInvestment,
+        isErrorUpdateInvestment,
+
+        // Delete Mutations
+        deleteInvestment,
+        isLoadingDeleteInvestment,
+        isErrorDeleteInvestment,
+
+        // States
+        search,
+        limit,
+        page,
+
+        // Computed Values
+        hasInvestments,
+        hasNextPage,
+        hasPreviousPage,
+
+        // Handlers
+        handleSearch,
+        handleLimit,
+        handlePage,
+    } = useInvestments()
+
+    // New Investment Form
+    const newInvestmentForm = useForm<newInvestmentFormType>({
+        resolver: zodResolver(newInvestmentSchema) as any,
+        defaultValues: {
+            symbol: "",
+            name: "",
+            type: "STOCK",
+            buyPrice: 0,
+            buyDate: "",
+            shares: 0,
+            fees: undefined,
+        },
+    })
+
+    // Update Investment Form
+    const updateInvestmentForm = useForm<updateInvestmentFormType>({
+        resolver: zodResolver(updateInvestmentSchema) as any,
+        defaultValues: {
+            symbol: "",
+            name: "",
+            type: "STOCK",
+        },
+    })
+
+    // States
+    const [isNewInvestmentOpen, setIsNewInvestmentOpen] = useState(false);
+    const [isUpdateInvestmentOpen, setIsUpdateInvestmentOpen] = useState(false);
+    const [selectedInvestmentId, setSelectedInvestmentId] = useState<string | null>(null);
+
+    // New Investment Submit
+    const newInvestmentSubmit = newInvestmentForm.handleSubmit(async (data) => {
+        try {
+            await newInvestment({
+                symbol: data.symbol,
+                name: data.name,
+                type: data.type,
+                buyPrice: data.buyPrice,
+                buyDate: data.buyDate, // API coerces to Date
+                shares: data.shares,
+                fees: data.fees ?? null,
+            });
+            setIsNewInvestmentOpen(false);
+            newInvestmentForm.reset();
+        } catch (error) {
+            // toast handled in hook onError
+        }
+    })
+
+    // Update Investment Submit
+    const updateInvestmentSubmit = updateInvestmentForm.handleSubmit(async (data) => {
+        if (!selectedInvestmentId) return;
+        try {
+            await updateInvestment({
+                params: { investmentId: selectedInvestmentId },
+                body: {
+                    symbol: data.symbol,
+                    name: data.name,
+                    type: data.type,
+                },
+            });
+            setIsUpdateInvestmentOpen(false);
+        } catch (error) {
+            // toast handled in hook onError
+        }
+    })
+
+    // Handle New Investment Open
+    const handleNewInvestmentOpen = () => {
+        newInvestmentForm.reset({
+            symbol: "",
+            name: "",
+            type: "STOCK",
+            buyPrice: undefined,
+            buyDate: "",
+            shares: undefined,
+            fees: undefined,
+        });
+        setIsNewInvestmentOpen(true);
+    }
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-col">
@@ -21,14 +171,18 @@ export default function InvestmentsPage() {
                     <InputGroupAddon>
                         <SearchIcon className="size-4" />
                     </InputGroupAddon>
-                    <InputGroupInput placeholder="Search investments" />
+                    <InputGroupInput
+                        placeholder="Search investments"
+                        value={search}
+                        onChange={(e) => handleSearch(e.target.value)}
+                    />
                 </InputGroup>
                 <div className="flex items-center gap-2">
                     <Button variant="outline">
                         <RefreshCcwIcon className="size-4" />
                         <span className="hidden md:block">Update Prices</span>
                     </Button>
-                    <Button>
+                    <Button onClick={handleNewInvestmentOpen}>
                         <PlusIcon className="size-4" />
                         <span className="hidden md:block">Add Investment</span>
                     </Button>
@@ -44,42 +198,321 @@ export default function InvestmentsPage() {
                             <TableHead className="text-right">Current Price</TableHead>
                             <TableHead className="text-right">Shares</TableHead>
                             <TableHead className="text-right">Dividends</TableHead>
+                            <TableHead className="text-right">Gain/Loss</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                             <TableHead className="text-center w-[100px]">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        <TableRow>
-                            <TableCell className="font-medium text-center">APPL</TableCell>
-                            <TableCell className="text-right font-mono">{formatCurrency(78.91)}</TableCell>
-                            <TableCell className="text-right font-mono">{formatCurrency(100)}</TableCell>
-                            <TableCell className="text-right font-mono">13.92736549</TableCell>
-                            <TableCell className="text-right font-mono">{formatCurrency(12.64)}</TableCell>
-                            <TableCell className="text-right font-mono">{formatCurrency(1638.70)}</TableCell>
-                            <TableCell className=" text-center">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreHorizontalIcon />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem>
-                                            <PencilIcon />
-                                            Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
-                                            <TrashIcon className="text-destructive" />
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
+                        {isLoadingInvestments ? (
+                            <TableRow>
+                                <TableCell colSpan={8} className="text-center">
+                                    <div className="w-full h-12 flex items-center justify-center">
+                                        <Spinner className="size-4" />
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : isErrorInvestments ? (
+                            <TableRow>
+                                <TableCell colSpan={8} className="text-center">
+                                    <div className="w-full h-12 flex items-center justify-center">
+                                        <p className="text-sm text-destructive">Error loading investments</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : !hasInvestments ? (
+                            <TableRow>
+                                <TableCell colSpan={8} className="text-center">
+                                    <div className="w-full h-12 flex items-center justify-center">
+                                        <p className="text-sm text-muted-foreground">No investments found</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        ) : investments?.data.map((investment) => {
+
+                            const buyTotals = investment.transactions
+                                .filter((t) => t.type === "BUY")
+                                .reduce(
+                                    (acc, t) => {
+                                        const qty = Number(t.quantity);
+                                        const price = Number(t.price);
+                                        acc.totalQty += qty;
+                                        acc.totalCost += qty * price;
+                                        return acc;
+                                    },
+                                    { totalQty: 0, totalCost: 0 }
+                                );
+                            const avgBuyPrice = buyTotals.totalQty > 0 ? buyTotals.totalCost / buyTotals.totalQty : 0;
+                            const dividends = investment.dividends.reduce((acc, dividend) => acc + Number(dividend.amount), 0);
+                            const currentPrice = Number(investment.currentPrice);
+                            const shares = Number(investment.shares);
+                            const currentValue = shares * currentPrice + dividends;
+                            const gainLoss = currentValue - (avgBuyPrice * shares);
+
+                            return (
+                                <TableRow key={investment.id}>
+                                    <TableCell className="font-medium text-center">{investment.symbol}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(avgBuyPrice)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(currentPrice)}</TableCell>
+                                    <TableCell className="text-right font-mono">{shares}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(dividends)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(gainLoss)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(currentValue)}</TableCell>
+                                    <TableCell className=" text-center">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <MoreHorizontalIcon />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={() => {
+                                                    setSelectedInvestmentId(investment.id);
+                                                    updateInvestmentForm.reset({
+                                                        symbol: investment.symbol,
+                                                        name: investment.name,
+                                                        type: investment.type as any,
+                                                    });
+                                                    setIsUpdateInvestmentOpen(true);
+                                                }}>
+                                                    <PencilIcon />
+                                                    Edit
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                            <TrashIcon className="text-destructive" />
+                                                            Delete
+                                                        </DropdownMenuItem>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>Delete Investment</AlertDialogTitle>
+                                                            <AlertDialogDescription>Are you sure you want to delete this investment?</AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                    </AlertDialogContent>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => deleteInvestment({ investmentId: investment.id })}>Delete</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialog>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            )
+                        })}
                     </TableBody>
                 </Table>
+
+                <div className="flex items-center justify-between">
+                    <Select value={limit.toString()} onValueChange={(value) => handleLimit(Number(value))}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Items per page" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10 Items per page</SelectItem>
+                            <SelectItem value="20">20 Items per page</SelectItem>
+                            <SelectItem value="50">50 Items per page</SelectItem>
+                            <SelectItem value="100">100 Items per page</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" disabled={!hasPreviousPage} onClick={() => handlePage(page - 1)}>
+                            <ChevronLeftIcon className="size-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" disabled={!hasNextPage} onClick={() => handlePage(page + 1)}>
+                            <ChevronRightIcon className="size-4" />
+                        </Button>
+                    </div>
+                </div>
             </div>
+
+            <Dialog open={isNewInvestmentOpen} onOpenChange={setIsNewInvestmentOpen}>
+                <DialogContent className="w-full max-w-sm md:max-w-lg lg:max-w-xl xl:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Investment</DialogTitle>
+                        <DialogDescription>Add a new investment to your portfolio</DialogDescription>
+                    </DialogHeader>
+                    <Form {...newInvestmentForm}>
+                        <form onSubmit={newInvestmentSubmit} className="space-y-4">
+                            <FormField control={newInvestmentForm.control} name="name" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Name</FormLabel>
+                                    <FormControl>
+                                        <Input {...field}
+                                            placeholder="Apple"
+                                            disabled={newInvestmentForm.formState.isSubmitting}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <FormField control={newInvestmentForm.control} name="symbol" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Symbol</FormLabel>
+                                        <FormControl>
+                                            <Input {...field}
+                                                placeholder="APPL"
+                                                disabled={newInvestmentForm.formState.isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newInvestmentForm.control} name="type" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Type</FormLabel>
+                                        <FormControl>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="STOCK">Stock</SelectItem>
+                                                    <SelectItem value="ETF">ETF</SelectItem>
+                                                    <SelectItem value="CRYPTO">Crypto</SelectItem>
+                                                    <SelectItem value="FUND">Fund</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <FormField control={newInvestmentForm.control} name="buyPrice" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Buy Price</FormLabel>
+                                        <FormControl>
+                                            <Input {...field}
+                                                placeholder="$8.91"
+                                                type="number"
+                                                min={0}
+                                                step={0.0000000001}
+                                                disabled={newInvestmentForm.formState.isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newInvestmentForm.control} name="buyDate" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Buy Date</FormLabel>
+                                        <FormControl>
+                                            <Input {...field}
+                                                placeholder="Buy date"
+                                                type="date"
+                                                disabled={newInvestmentForm.formState.isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newInvestmentForm.control} name="shares" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Shares</FormLabel>
+                                        <FormControl>
+                                            <Input {...field}
+                                                placeholder="13.92736549"
+                                                type="number"
+                                                min={0}
+                                                step={0.0000000001}
+                                                disabled={newInvestmentForm.formState.isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <FormField control={newInvestmentForm.control} name="fees" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Fees</FormLabel>
+                                    <FormControl>
+                                        <Input {...field}
+                                            placeholder="$1.23"
+                                            type="number"
+                                            min={0}
+                                            step={0.0000000001}
+                                            disabled={newInvestmentForm.formState.isSubmitting}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <DialogFooter>
+                                <Button type="submit" disabled={newInvestmentForm.formState.isSubmitting}>
+                                    {newInvestmentForm.formState.isSubmitting ? (
+                                        <Spinner className="size-4" />
+                                    ) : (
+                                        "Add Investment"
+                                    )}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isUpdateInvestmentOpen} onOpenChange={setIsUpdateInvestmentOpen}>
+                <DialogContent className="w-full max-w-sm md:max-w-lg lg:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Investment</DialogTitle>
+                        <DialogDescription>Update the basic info of this investment</DialogDescription>
+                    </DialogHeader>
+                    <Form {...updateInvestmentForm}>
+                        <form onSubmit={updateInvestmentSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <FormField control={updateInvestmentForm.control} name="symbol" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Symbol</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} disabled={updateInvestmentForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={updateInvestmentForm.control} name="type" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Type</FormLabel>
+                                        <FormControl>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="STOCK">Stock</SelectItem>
+                                                    <SelectItem value="ETF">ETF</SelectItem>
+                                                    <SelectItem value="CRYPTO">Crypto</SelectItem>
+                                                    <SelectItem value="FUND">Fund</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <FormField control={updateInvestmentForm.control} name="name" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Name</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} disabled={updateInvestmentForm.formState.isSubmitting} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <DialogFooter>
+                                <Button type="submit" disabled={updateInvestmentForm.formState.isSubmitting}>
+                                    {isLoadingUpdateInvestment ? <Spinner className="size-4" /> : "Save Changes"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
         </div>
     );
 }
