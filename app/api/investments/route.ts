@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma";
+import { getCurrentPrice } from "@/lib/yahoo-finance";
 
 const newInvestmentSchema = z.object({
     // Investment Data
@@ -81,6 +82,25 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 422 });
     }
 
+    // Verify if investment already exists
+    const existingInvestment = await prisma.investment.findFirst({
+        where: {
+            userId: session.user.id,
+            symbol: data.symbol,
+        },
+    });
+
+    if (existingInvestment) {
+        return NextResponse.json({ error: "Investment already exists" }, { status: 400 });
+    }
+
+    // Get current price
+    const currentPrice = await getCurrentPrice(data.symbol);
+
+    if (!currentPrice) {
+        return NextResponse.json({ error: "Current price not found" }, { status: 400 });
+    }
+
     await prisma.$transaction(async (tx) => {
         const newInvestment = await tx.investment.create({
             data: {
@@ -88,7 +108,7 @@ export async function POST(request: NextRequest) {
                 symbol: data.symbol,
                 name: data.name,
                 type: data.type,
-                currentPrice: data.buyPrice,
+                currentPrice: currentPrice,
                 shares: data.shares,
             },
         })

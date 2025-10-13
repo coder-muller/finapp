@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useInvestments } from "@/hooks/use-investments";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { Investment } from "@/lib/generated/prisma";
 
 const newInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
@@ -62,6 +63,11 @@ export default function InvestmentsPage() {
         deleteInvestment,
         isLoadingDeleteInvestment,
         isErrorDeleteInvestment,
+
+        // Update Investments
+        updateInvestments,
+        isLoadingUpdateInvestments,
+        isErrorUpdateInvestments,
 
         // States
         search,
@@ -159,6 +165,16 @@ export default function InvestmentsPage() {
         setIsNewInvestmentOpen(true);
     }
 
+    const handleOpenUpdateInvestments = (investment: Investment) => {
+        setSelectedInvestmentId(investment.id);
+        updateInvestmentForm.reset({
+            symbol: investment.symbol,
+            name: investment.name,
+            type: investment.type as any,
+        });
+        setIsUpdateInvestmentOpen(true);
+    }
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-col">
@@ -178,8 +194,8 @@ export default function InvestmentsPage() {
                     />
                 </InputGroup>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline">
-                        <RefreshCcwIcon className="size-4" />
+                    <Button variant="outline" onClick={() => updateInvestments()} disabled={isLoadingUpdateInvestments}>
+                        {isLoadingUpdateInvestments ? <RefreshCcwIcon className="size-4 animate-spin" /> : <RefreshCcwIcon className="size-4" />}
                         <span className="hidden md:block">Update Prices</span>
                     </Button>
                     <Button onClick={handleNewInvestmentOpen}>
@@ -266,15 +282,16 @@ export default function InvestmentsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => {
-                                                    setSelectedInvestmentId(investment.id);
-                                                    updateInvestmentForm.reset({
-                                                        symbol: investment.symbol,
-                                                        name: investment.name,
-                                                        type: investment.type as any,
-                                                    });
-                                                    setIsUpdateInvestmentOpen(true);
-                                                }}>
+                                                <DropdownMenuItem>
+                                                    <PlusCircleIcon />
+                                                    Add Transaction
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem>
+                                                    <CoinsIcon />
+                                                    Add Dividend
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleOpenUpdateInvestments(investment)}>
                                                     <PencilIcon />
                                                     Edit
                                                 </DropdownMenuItem>
@@ -291,11 +308,11 @@ export default function InvestmentsPage() {
                                                             <AlertDialogTitle>Delete Investment</AlertDialogTitle>
                                                             <AlertDialogDescription>Are you sure you want to delete this investment?</AlertDialogDescription>
                                                         </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                            <AlertDialogAction onClick={() => deleteInvestment({ investmentId: investment.id })}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
                                                     </AlertDialogContent>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => deleteInvestment({ investmentId: investment.id })}>Delete</AlertDialogAction>
-                                                    </AlertDialogFooter>
                                                 </AlertDialog>
                                             </DropdownMenuContent>
                                         </DropdownMenu>

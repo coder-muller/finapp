@@ -63,6 +63,10 @@ interface deleteInvestmentResponse {
     message: string;
 }
 
+interface updateInvestmentsResponse {
+    message: string;
+}
+
 
 // API Functions
 const getInvestmentsApi = async (params: getInvestmentsParams) => {
@@ -87,6 +91,13 @@ const updateInvestmentApi = async (params: updateInvestmentParams, body: updateI
 
 const deleteInvestmentApi = async (params: deleteInvestmentParams) => {
     const response = await axios.delete<deleteInvestmentResponse>(`/api/investments/${params.investmentId}`);
+
+    return response.data;
+}
+
+// Update Investments
+const updateInvestmentsApi = async () => {
+    const response = await axios.patch<updateInvestmentsResponse>("/api/update");
 
     return response.data;
 }
@@ -164,6 +175,22 @@ export const useInvestments = () => {
         },
     })
 
+    // Update Investments
+    const {
+        mutateAsync: updateInvestments,
+        isPending: isLoadingUpdateInvestments,
+        isError: isErrorUpdateInvestments,
+    } = useMutation({
+        mutationFn: updateInvestmentsApi,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["investments"] });
+        },
+        onError: (error: unknown) => {
+            console.error("Error updating investments: ", error);
+            toast.error(error instanceof AxiosError ? error.response?.data.error : "An unknown error occurred");
+        },
+    })
+
     // Computed Values
     const hasInvestments = Boolean(investments?.data && investments.data.length > 0);
     const hasNextPage = Boolean(investments?.total && investments.total > (page * limit));
@@ -205,6 +232,11 @@ export const useInvestments = () => {
         deleteInvestment,
         isLoadingDeleteInvestment,
         isErrorDeleteInvestment,
+
+        // Update Investments
+        updateInvestments,
+        isLoadingUpdateInvestments,
+        isErrorUpdateInvestments,
 
         // States
         search,
