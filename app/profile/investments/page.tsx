@@ -259,7 +259,7 @@ export default function InvestmentsPage() {
                                     { totalQty: 0, totalCost: 0 }
                                 );
                             const avgBuyPrice = buyTotals.totalQty > 0 ? buyTotals.totalCost / buyTotals.totalQty : 0;
-                            const dividends = investment.dividends.reduce((acc, dividend) => acc + Number(dividend.amount), 0);
+                            const dividends = investment.dividends.reduce((acc, dividend) => acc + Number(dividend.amount), 0) - (investment.dividends.reduce((acc, dividend) => acc + Number(dividend.tax), 0));
                             const currentPrice = Number(investment.currentPrice);
                             const shares = Number(investment.shares);
                             const currentValue = shares * currentPrice + dividends;

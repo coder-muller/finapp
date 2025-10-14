@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentPrice } from "@/lib/yahoo-finance";
+import yahooFinance from "yahoo-finance2";
+import { toast } from "sonner";
 
 // Function to update the investment current price using the Yahoo Finance
 export async function PATCH(request: NextRequest) {
@@ -18,6 +20,18 @@ export async function PATCH(request: NextRequest) {
     const investments = await prisma.investment.findMany({
         where: {
             userId: session.user.id,
+        },
+        include: {
+            dividends: {
+                orderBy: {
+                    date: "desc",
+                },
+            },
+            transactions: {
+                orderBy: {
+                    date: "asc",
+                },
+            },
         },
     });
 
@@ -43,6 +57,58 @@ export async function PATCH(request: NextRequest) {
                 currentPrice: currentPrice,
             },
         });
+
+        // Update dividends
+        const lastDividendDate = investment.dividends.length
+            ? new Date(investment.dividends[0].date)
+            : new Date(investment.transactions[0].date);
+
+        const period1 = Math.floor(lastDividendDate.getTime() / 1000);
+        const period2 = Math.floor(Date.now() / 1000);
+
+        // Get dividends from Yahoo Finance
+        const result = await yahooFinance.chart(investment.symbol, {
+            period1,
+            period2,
+            events: "dividends",
+        })
+
+        const dividends = result.events?.dividends
+            ? Object.values(result.events.dividends)
+            : [];
+
+        if (dividends.length > 0) {
+            for (const dividend of dividends) {
+
+                const existingDividend = await prisma.dividend.findFirst({
+                    where: {
+                        investmentId: investment.id,
+                        date: new Date(Number(dividend.date) * 1000),
+                        amount: dividend.amount * Number(investment.shares),
+                    },
+                });
+
+                if (existingDividend) {
+                    console.log(`Dividend for ${investment.symbol} on ${new Date(Number(dividend.date) * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} already exists`);
+                    continue;
+                }
+
+                const newDividend = await prisma.dividend.create({
+                    data: {
+                        investmentId: investment.id,
+                        amount: dividend.amount * Number(investment.shares),
+                        date: new Date(Number(dividend.date) * 1000),
+                        tax: (dividend.amount * Number(investment.shares)) * 0.30, // TODO: 30% of the dividend amount for brazilian taxes
+                        observation: `Dividend from ${investment.symbol} on ${new Date(Number(dividend.date) * 1000).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`,
+                    }
+                })
+
+                if (!newDividend) {
+                    errorsSymbols.push(investment.symbol);
+                    continue;
+                }
+            }   
+        }
     }
 
     // If errors symbols, return error
