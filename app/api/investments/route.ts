@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Get search params
     const { searchParams } = new URL(request.url);
+    const orderBy = searchParams.get("orderBy") || "symbol:asc";
     const search = searchParams.get("search");
     const limit = searchParams.get("limit") || "10";
     const page = searchParams.get("page") || "1";
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
     // Get investments
     const investments = await prisma.investment.findMany({
         where: whereConditions,
+        orderBy: {
+            [orderBy.split(":")[0]]: orderBy.split(":")[1],
+        },
         take: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
         include: {

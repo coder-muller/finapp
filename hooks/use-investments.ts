@@ -16,6 +16,7 @@ type InvestmentWithTransactionsAndDividends = Investment & {
 
 // Types
 interface getInvestmentsParams {
+    orderBy: "symbol:asc" | "symbol:desc" | "type:asc" | "type:desc" | "currentPrice:asc" | "currentPrice:desc" | "shares:asc" | "shares:desc";
     search: string;
     limit: number;
     page: number;
@@ -111,6 +112,7 @@ export const useInvestments = () => {
     const [search, setSearch] = useState("");
     const [limit, setLimit] = useState(10);
     const [page, setPage] = useState(1);
+    const [orderBy, setOrderBy] = useState<"symbol:asc" | "symbol:desc" | "type:asc" | "type:desc" | "currentPrice:asc" | "currentPrice:desc" | "shares:asc" | "shares:desc">("symbol:asc");
 
     // Get Investments
     const {
@@ -119,11 +121,12 @@ export const useInvestments = () => {
         isError: isErrorInvestments,
         refetch: refetchInvestments,
     } = useQuery({
-        queryKey: ["investments", { search, limit, page }],
+        queryKey: ["investments", { search, limit, page, orderBy }],
         queryFn: () => getInvestmentsApi({
             search,
             limit,
             page,
+            orderBy,
         }),
     })
 
@@ -211,6 +214,11 @@ export const useInvestments = () => {
         setPage(value);
     }
 
+    const handleOrderBy = (value: "symbol:asc" | "symbol:desc" | "type:asc" | "type:desc" | "currentPrice:asc" | "currentPrice:desc" | "shares:asc" | "shares:desc") => {
+        setOrderBy(value);
+        setPage(1);
+    }
+
     return {
         // Queries
         investments,
@@ -242,7 +250,7 @@ export const useInvestments = () => {
         search,
         limit,
         page,
-
+        orderBy,
         // Computed Values
         hasInvestments,
         hasNextPage,
@@ -252,6 +260,7 @@ export const useInvestments = () => {
         handleSearch,
         handleLimit,
         handlePage,
+        handleOrderBy,
     }
 
 }

@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon } from "lucide-react";
+import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon, SortAscIcon, SortDescIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
@@ -93,6 +93,7 @@ export default function InvestmentsPage() {
         search,
         limit,
         page,
+        orderBy,
 
         // Computed Values
         hasInvestments,
@@ -103,6 +104,7 @@ export default function InvestmentsPage() {
         handleSearch,
         handleLimit,
         handlePage,
+        handleOrderBy,
     } = useInvestments()
 
     // New Investment Form
@@ -327,6 +329,62 @@ export default function InvestmentsPage() {
             </div>
 
             <div className="flex flex-col gap-4 border border-border rounded-md p-4">
+
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex flex-col">
+                        <Label className="text-sm font-normal">All Investments</Label>
+                        <Label className="text-xs text-muted-foreground">View all your investments</Label>
+                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline">
+                                {orderBy.includes("asc") ? <SortAscIcon /> : <SortDescIcon />}
+                                <span className="hidden md:block">
+                                    {orderBy.split(":")[0].charAt(0).toUpperCase() + orderBy.split(":")[0].slice(1)}
+                                </span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleOrderBy("symbol:asc")}>
+                                <SortAscIcon />
+                                Symbol
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOrderBy("symbol:desc")}>
+                                <SortDescIcon />
+                                Symbol
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleOrderBy("type:asc")}>
+                                <SortAscIcon />
+                                Type
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOrderBy("type:desc")}>
+                                <SortDescIcon />
+                                Type
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleOrderBy("currentPrice:asc")}>
+                                <SortAscIcon />
+                                Current Price
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOrderBy("currentPrice:desc")}>
+                                <SortDescIcon />
+                                Current Price
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleOrderBy("shares:asc")}>
+                                <SortAscIcon />
+                                Shares
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOrderBy("shares:desc")}>
+                                <SortDescIcon />
+                                Shares
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                </div>
+
                 <Table>
                     <TableHeader>
                         <TableRow>
