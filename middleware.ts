@@ -26,15 +26,10 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next()
     }
 
-    /*
-
-    DISABLED FOR DEVELOPMENT
-
     // Redirect autenticated users to the profile page
     if (isLoggedIn && isLoginRoute) {
         return NextResponse.redirect(new URL("/profile", req.url))
     }
-    */
 
     // Public routes
     if (isPublicRoute) {

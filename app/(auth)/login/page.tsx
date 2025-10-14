@@ -14,7 +14,7 @@ export default function LoginPage() {
                 <LoginForm />
             </CardContent>
             <div className="flex items-center justify-center">
-                <Label className="text-sm">Don't have an account? <Link href="/register" className="text-primary underline-offset-4 hover:underline">Register</Link></Label>
+                <Label className="text-sm">Don&apos;t have an account? <Link href="/register" className="text-primary underline-offset-4 hover:underline">Register</Link></Label>
             </div>
         </Card>
     )
