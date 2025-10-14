@@ -51,7 +51,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Build equity series month by month using Yahoo Finance monthly closes
     const equitySeries = await yahooFinanceService.getMonthlyEquitySeries(
         investment.symbol,
-        investment.transactions.map((t) => ({ type: t.type, quantity: t.quantity, date: new Date(t.date) })),
+        investment.transactions.map((t) => ({ 
+            type: t.type, 
+            quantity: t.quantity, 
+            price: t.price,
+            tax: t.tax,
+            date: new Date(t.date) 
+        })),
         investment.dividends.map((d) => ({ amount: d.amount, date: new Date(d.date) })),
         { stopWhenZero: true },
     );

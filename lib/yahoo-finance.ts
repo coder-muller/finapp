@@ -406,7 +406,7 @@ class YahooFinanceService {
         transactions: Array<{ type: string; quantity: any; date: Date | string | number }>,
         dividends: Array<{ amount: any; date: Date | string | number }>,
         opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
-    ): Promise<Array<{ month: string; value: number; dividends: number }>> {
+    ): Promise<Array<{ month: string; value: number; invested: number; dividends: number }>> {
         if (!symbol?.trim()) return [];
         if (!transactions?.length) return [];
 
@@ -414,7 +414,13 @@ class YahooFinanceService {
 
         // Normalize and sort transactions ascending by date
         const normalizedTx = [...transactions]
-            .map(t => ({ type: String((t as any).type), quantity: (t as any).quantity, date: new Date((t as any).date) }))
+            .map(t => ({ 
+                type: String((t as any).type), 
+                quantity: (t as any).quantity, 
+                price: (t as any).price,
+                tax: (t as any).tax || 0,
+                date: new Date((t as any).date) 
+            }))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         // Normalize dividends
@@ -429,7 +435,7 @@ class YahooFinanceService {
         // Fetch monthly closes once for the entire window
         const monthlyCloses = await this.getMonthlyCloses(normalizedSymbol, firstDate, now);
 
-        const series: Array<{ month: string; value: number; dividends: number }> = [];
+        const series: Array<{ month: string; value: number; invested: number; dividends: number }> = [];
 
         // Iterate month by month starting from the first transaction month
         let cursor = this.getMonthStart(firstDate);
@@ -456,6 +462,15 @@ class YahooFinanceService {
                     price = await this.getCurrentPrice(normalizedSymbol);
                 }
 
+                // Calculate total invested up to this month (BUY transactions only)
+                const totalInvested = normalizedTx
+                    .filter(t => t.type === "BUY" && new Date(t.date).getTime() <= monthEnd.getTime())
+                    .reduce((sum, t) => {
+                        const cost = Number(t.quantity) * Number(t.price);
+                        const tax = Number(t.tax);
+                        return sum + cost + tax;
+                    }, 0);
+
                 // Calculate dividends for this month
                 const monthStart = this.getMonthStart(cursor);
                 const monthEndTime = monthEnd.getTime();
@@ -469,8 +484,9 @@ class YahooFinanceService {
 
                 if (price !== null && price !== undefined) {
                     const value = this.roundDecimal(Number(price) * Number(shares), 2);
+                    const invested = this.roundDecimal(totalInvested, 2);
                     const dividendsRounded = this.roundDecimal(monthDividends, 2);
-                    series.push({ month: this.formatMonthLabel(cursor), value, dividends: dividendsRounded });
+                    series.push({ month: this.formatMonthLabel(cursor), value, invested, dividends: dividendsRounded });
                 }
             }
 
@@ -530,7 +546,7 @@ export async function getMonthlyEquitySeries(
     transactions: Array<{ type: string; quantity: any; date: Date | string | number }>,
     dividends: Array<{ amount: any; date: Date | string | number }>,
     opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
-): Promise<Array<{ month: string; value: number; dividends: number }>> {
+): Promise<Array<{ month: string; value: number; invested: number; dividends: number }>> {
     return yahooFinanceService.getMonthlyEquitySeries(symbol, transactions, dividends, opts);
 }
 

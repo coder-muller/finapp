@@ -16,6 +16,10 @@ const valueChartConfig = {
         label: "Total Value",
         color: "var(--chart-1)",
     },
+    invested: {
+        label: "Total Invested",
+        color: "var(--chart-5)",
+    },
 } satisfies ChartConfig;
 
 const dividendsChartConfig = {
@@ -39,7 +43,9 @@ const ValueTooltip = ({ active, payload, label, currency }: {
                     <div key={index} className="flex items-center justify-between gap-6">
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-sm capitalize text-foreground">Total Value</span>
+                            <span className="text-sm capitalize text-foreground">
+                                {item.dataKey === "value" ? "Total Value" : "Total Invested"}
+                            </span>
                         </div>
                         <span className="text-sm font-medium text-foreground">
                             {formatCurrency(item.value, currency)}
@@ -189,7 +195,14 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
                                 dot={{ fill: valueChartConfig.value.color, strokeWidth: 2, r: 4 }}
                                 activeDot={{ r: 6 }}
                             />
-                            {/* TODO: Add a line for total invested from equity series */}
+                            <Line
+                                type="monotone"
+                                dataKey="invested"
+                                stroke={valueChartConfig.invested.color}
+                                strokeWidth={2}
+                                strokeDasharray="7 7"
+                                dot={false}
+                            />
                         </ComposedChart>
                     </ChartContainer>
                 </CardContent>
