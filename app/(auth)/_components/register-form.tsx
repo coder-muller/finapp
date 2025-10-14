@@ -47,7 +47,9 @@ export function RegisterForm() {
             callbackURL: "/profile",
         }, {
             onSuccess: () => {
-                toast.success("Account created successfully")
+                toast.success("Account created successfully", {
+                    description: "Please check your email for verification instructions"
+                })
                 router.push("/profile")
             },
             onError: (ctx) => {
