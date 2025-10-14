@@ -6,7 +6,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon, SortAscIcon, SortDescIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, calculateInvestmentMetrics } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,6 +21,7 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { Investment } from "@/lib/generated/prisma";
 import { useTransactions } from "@/hooks/use-transactions";
 import { useDividends } from "@/hooks/use-dividends";
+import Link from "next/link";
 
 const newInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
@@ -422,35 +423,24 @@ export default function InvestmentsPage() {
                                 </TableCell>
                             </TableRow>
                         ) : investments?.data.map((investment) => {
-
-                            const buyTotals = investment.transactions
-                                .filter((t) => t.type === "BUY")
-                                .reduce(
-                                    (acc, t) => {
-                                        const qty = Number(t.quantity);
-                                        const price = Number(t.price);
-                                        acc.totalQty += qty;
-                                        acc.totalCost += qty * price;
-                                        return acc;
-                                    },
-                                    { totalQty: 0, totalCost: 0 }
-                                );
-                            const avgBuyPrice = buyTotals.totalQty > 0 ? buyTotals.totalCost / buyTotals.totalQty : 0;
-                            const dividends = investment.dividends.reduce((acc, dividend) => acc + Number(dividend.amount), 0) - (investment.dividends.reduce((acc, dividend) => acc + Number(dividend.tax), 0));
-                            const currentPrice = Number(investment.currentPrice);
-                            const shares = Number(investment.shares);
-                            const currentValue = shares * currentPrice;
-                            const gainLoss = currentValue + dividends - (avgBuyPrice * shares);
+                            // Calculate all metrics using the centralized function
+                            const metrics = calculateInvestmentMetrics({
+                                transactions: investment.transactions,
+                                dividends: investment.dividends,
+                                sellGainLoss: investment.sellGainLoss,
+                                currentPrice: investment.currentPrice,
+                                shares: investment.shares,
+                            });
 
                             return (
-                                <TableRow key={investment.id}>
+                                <TableRow key={investment.id} className={cn(metrics.shares === 0 && "text-muted-foreground opacity-65")}>
                                     <TableCell className="font-medium text-center">{investment.symbol}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(avgBuyPrice, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(currentPrice, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{shares}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(dividends, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(gainLoss, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(currentValue, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.avgBuyPrice, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.currentPrice, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{metrics.shares}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.totalDividends, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.totalProfitLoss, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.currentValue, investment.currency)}</TableCell>
                                     <TableCell className=" text-center">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -459,10 +449,12 @@ export default function InvestmentsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem>
-                                                    <InfoIcon />
-                                                    More Info
-                                                </DropdownMenuItem>
+                                                <Link href={`/profile/investments/${investment.id}`}>
+                                                    <DropdownMenuItem>
+                                                        <InfoIcon />
+                                                        More Info
+                                                    </DropdownMenuItem>
+                                                </Link>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={() => handleOpenNewTransaction(investment)}>
                                                     <PlusCircleIcon />

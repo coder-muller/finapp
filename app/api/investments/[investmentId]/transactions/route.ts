@@ -100,7 +100,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await prisma.$transaction(async (tx) => {
         // Create transaction
-        await tx.transaction.create({
+        const transaction = await tx.transaction.create({
             data: {
                 investmentId: investmentId,
                 type: data.type,
@@ -121,6 +121,49 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 shares: { increment: data.type === "BUY" ? data.quantity : -data.quantity },
             },
         });
+
+        // Create a sell gain loss if the transaction is a sell
+        if (data.type === "SELL") {
+            // Get all BUY transactions up to this date to calculate average buy price
+            const buyTransactions = await tx.transaction.findMany({
+                where: {
+                    investmentId: investmentId,
+                    type: "BUY",
+                    date: { lte: data.date },
+                },
+                orderBy: {
+                    date: "asc",
+                },
+            });
+
+            // Calculate weighted average buy price
+            let totalCost = 0;
+            let totalQuantity = 0;
+            for (const buyTx of buyTransactions) {
+                const qty = Number(buyTx.quantity);
+                const price = Number(buyTx.price);
+                const tax = Number(buyTx.tax || 0);
+                totalCost += (qty * price) + tax;
+                totalQuantity += qty;
+            }
+
+            const avgBuyPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0;
+
+            // Calculate realized profit/loss
+            // (sell price × quantity) - (avg buy price × quantity) - sell tax
+            const sellRevenue = Number(data.price) * Number(data.quantity);
+            const sellCost = avgBuyPrice * Number(data.quantity);
+            const sellTax = Number(data.tax || 0);
+            const realizedProfitLoss = sellRevenue - sellCost - sellTax;
+
+            await tx.sellGainLoss.create({
+                data: {
+                    investmentId: investmentId,
+                    transactionId: transaction.id,
+                    realizedProfitLoss: realizedProfitLoss,
+                },
+            });
+        }
 
         // Remove all future dividends
         await tx.dividend.deleteMany({

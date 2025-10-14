@@ -404,8 +404,9 @@ class YahooFinanceService {
     async getMonthlyEquitySeries(
         symbol: string,
         transactions: Array<{ type: string; quantity: any; date: Date | string | number }>,
+        dividends: Array<{ amount: any; date: Date | string | number }>,
         opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
-    ): Promise<Array<{ month: string; value: number }>> {
+    ): Promise<Array<{ month: string; value: number; dividends: number }>> {
         if (!symbol?.trim()) return [];
         if (!transactions?.length) return [];
 
@@ -416,13 +417,19 @@ class YahooFinanceService {
             .map(t => ({ type: String((t as any).type), quantity: (t as any).quantity, date: new Date((t as any).date) }))
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+        // Normalize dividends
+        const normalizedDivs = (dividends || []).map(d => ({
+            amount: Number((d as any).amount),
+            date: new Date((d as any).date),
+        }));
+
         const firstDate = normalizedTx[0]?.date ? new Date(normalizedTx[0].date) : new Date();
         const now = new Date();
 
         // Fetch monthly closes once for the entire window
         const monthlyCloses = await this.getMonthlyCloses(normalizedSymbol, firstDate, now);
 
-        const series: Array<{ month: string; value: number }> = [];
+        const series: Array<{ month: string; value: number; dividends: number }> = [];
 
         // Iterate month by month starting from the first transaction month
         let cursor = this.getMonthStart(firstDate);
@@ -449,9 +456,21 @@ class YahooFinanceService {
                     price = await this.getCurrentPrice(normalizedSymbol);
                 }
 
+                // Calculate dividends for this month
+                const monthStart = this.getMonthStart(cursor);
+                const monthEndTime = monthEnd.getTime();
+                const monthStartTime = monthStart.getTime();
+                const monthDividends = normalizedDivs
+                    .filter(d => {
+                        const divTime = d.date.getTime();
+                        return divTime >= monthStartTime && divTime <= monthEndTime;
+                    })
+                    .reduce((sum, d) => sum + d.amount, 0);
+
                 if (price !== null && price !== undefined) {
                     const value = this.roundDecimal(Number(price) * Number(shares), 2);
-                    series.push({ month: this.formatMonthLabel(cursor), value });
+                    const dividendsRounded = this.roundDecimal(monthDividends, 2);
+                    series.push({ month: this.formatMonthLabel(cursor), value, dividends: dividendsRounded });
                 }
             }
 
@@ -509,9 +528,10 @@ export async function syncInvestmentDividends(prismaOrTx: PrismaClient | Prisma.
 export async function getMonthlyEquitySeries(
     symbol: string,
     transactions: Array<{ type: string; quantity: any; date: Date | string | number }>,
+    dividends: Array<{ amount: any; date: Date | string | number }>,
     opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
-): Promise<Array<{ month: string; value: number }>> {
-    return yahooFinanceService.getMonthlyEquitySeries(symbol, transactions, opts);
+): Promise<Array<{ month: string; value: number; dividends: number }>> {
+    return yahooFinanceService.getMonthlyEquitySeries(symbol, transactions, dividends, opts);
 }
 
 // Export types and utilities for advanced usage

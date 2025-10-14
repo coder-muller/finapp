@@ -21,7 +21,7 @@ type InvestmentWithRelations = Investment & {
     transactions: Transaction[];
     dividends: Dividend[];
     sellGainLoss: SellGainLoss[];
-    equitySeries?: Array<{ month: string; value: number }>;
+    equitySeries?: Array<{ month: string; value: number; dividends: number }>;
 }
 
 interface getInvestmentResponse {
