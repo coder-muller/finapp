@@ -11,7 +11,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.redirect(new URL("/login", request.url));
     }
 
     // Get all investments from the current user

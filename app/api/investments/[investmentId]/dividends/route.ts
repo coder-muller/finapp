@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     });
 
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const { investmentId } = await params;
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
 
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const { investmentId } = await params;

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.redirect(new URL("/login", request.url));
     }
 
     // Get search params
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.redirect(new URL("/login", request.url));
     }
 
     // Get body

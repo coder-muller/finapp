@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { UserForm } from "../_components/forms/user-form";
 import { PasswordForm } from "../_components/forms/password-form";
 import { DeleteUserForm } from "../_components/forms/delete-user-form";
+import { UserSessions } from "../_components/user-sessions";
 
 export default function AccountPage() {
     return (
@@ -40,7 +41,7 @@ export default function AccountPage() {
                         <CardDescription>Manage your active sessions</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {/* <SessionsList /> */}
+                        <UserSessions />
                     </CardContent>
                 </Card>
                 <Card className="border-destructive/20 shadow-destructive h-max">

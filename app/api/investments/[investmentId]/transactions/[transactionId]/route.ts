@@ -10,7 +10,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     });
 
     if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.redirect(new URL("/login", request.url));
     }
 
     const { investmentId, transactionId } = await params;
