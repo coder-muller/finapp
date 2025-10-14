@@ -13,6 +13,16 @@ export function formatCurrency(amount: number, currency: Currency) {
   }).format(amount)
 }
 
+export function formatDate(date: Date | string | number, currency: Currency) {
+
+  const dateObj = new Date(date);
+
+  return new Intl.DateTimeFormat(currency === "USD" ? "en-US" : "pt-BR", {
+    dateStyle: "short",
+    timeZone: "UTC",
+  }).format(dateObj)
+}
+
 interface InvestmentMetricsInput {
   transactions: Transaction[];
   dividends: Dividend[];
@@ -26,18 +36,18 @@ export interface InvestmentMetrics {
   avgBuyPrice: number;
   totalInvested: number;
   totalQuantityBought: number;
-  
+
   // Current position
   currentPrice: number;
   shares: number;
   currentValue: number;
-  
+
   // Returns
   totalDividends: number;
   realizedGainLoss: number;
   unrealizedGainLoss: number;
   totalProfitLoss: number;
-  
+
   // Percentages
   profitLossPercentage: number;
   returnOnInvestment: number;
@@ -94,8 +104,8 @@ export function calculateInvestmentMetrics(investment: InvestmentMetricsInput): 
   const totalProfitLoss = unrealizedGainLoss + totalDividends + realizedGainLoss;
 
   // Calculate percentages
-  const profitLossPercentage = totalInvested > 0 
-    ? (totalProfitLoss / totalInvested) * 100 
+  const profitLossPercentage = totalInvested > 0
+    ? (totalProfitLoss / totalInvested) * 100
     : 0;
 
   const returnOnInvestment = totalInvested > 0

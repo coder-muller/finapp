@@ -10,6 +10,8 @@ import { formatCurrency, calculateInvestmentMetrics } from "@/lib/utils";
 import { TriangleAlertIcon } from "lucide-react";
 import { use } from "react";
 import { Bar, ComposedChart, Line, Tooltip, XAxis, YAxis } from "recharts";
+import TransactionsTable from "../../_components/transactions-table";
+import DividendsTable from "../../_components/dividends-table";
 
 const valueChartConfig = {
     value: {
@@ -18,7 +20,7 @@ const valueChartConfig = {
     },
     invested: {
         label: "Total Invested",
-        color: "var(--chart-5)",
+        color: "var(--color-muted-foreground)",
     },
 } satisfies ChartConfig;
 
@@ -134,24 +136,24 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Total Invested</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Label className="text-2xl font-mono">{formatCurrency(metrics.totalInvested, investment.data.currency)}</Label>
-                    </CardContent>
-                    <CardFooter>
-                        <Label className="text-sm text-muted-foreground">Total invested in the investment</Label>
-                    </CardFooter>
-                </Card>
-                <Card>
-                    <CardHeader>
                         <CardTitle>Current Value</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Label className="text-2xl font-mono">{formatCurrency(metrics.currentValue, investment.data.currency)}</Label>
                     </CardContent>
                     <CardFooter>
-                        <Label className="text-sm text-muted-foreground">Current value of the investment</Label>
+                        <Label className="text-sm text-muted-foreground">{formatCurrency(metrics.totalInvested, investment.data.currency)} invested</Label>
+                    </CardFooter>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Current Price</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Label className="text-2xl font-mono">{formatCurrency(metrics.currentPrice, investment.data.currency)}</Label>
+                    </CardContent>
+                    <CardFooter>
+                        <Label className="text-sm text-muted-foreground">{metrics.shares} shares</Label>
                     </CardFooter>
                 </Card>
                 <Card>
@@ -164,7 +166,7 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
                         </Label>
                     </CardContent>
                     <CardFooter>
-                        <Label className="text-sm text-muted-foreground">This value includes dividends</Label>
+                        <Label className="text-sm text-muted-foreground">{metrics.totalDividends > 0 ? `${formatCurrency(metrics.totalDividends, investment.data.currency)} in dividends` : `This value includes dividends`}</Label>
                     </CardFooter>
                 </Card>
             </div>
@@ -210,26 +212,47 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
 
             <Card>
                 <CardHeader>
+                    <CardTitle>Transactions</CardTitle>
+                    <CardDescription>
+                        View the transactions for this investment
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {investment.data.transactions.length > 0 ? (
+                        <TransactionsTable transactions={investment.data.transactions} currency={investment.data.currency} />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center">
+                            <Label className="text-sm text-muted-foreground text-center my-6">No transactions found</Label>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
                     <CardTitle>Dividends History</CardTitle>
                     <CardDescription>
                         View the monthly dividends received from this investment
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col gap-4">
                     {investment.data.dividends.length > 0 ? (
-                        <ChartContainer config={dividendsChartConfig} className="w-full h-[350px]">
-                            <ComposedChart data={investment.data.equitySeries} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                <XAxis
-                                    dataKey="month"
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tick={{ fontSize: 12, fill: "primary" }}
-                                />
-                                <YAxis hide />
-                                <Tooltip content={<DividendsTooltip currency={investment.data.currency} />} />
-                                <Bar dataKey="dividends" fill={dividendsChartConfig.dividends.color} radius={[4, 4, 0, 0]} />
-                            </ComposedChart>
-                        </ChartContainer>
+                        <>
+                            <ChartContainer config={dividendsChartConfig} className="w-full h-[350px]">
+                                <ComposedChart data={investment.data.equitySeries} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                    <XAxis
+                                        dataKey="month"
+                                        tickLine={false}
+                                        axisLine={false}
+                                        tick={{ fontSize: 12, fill: "primary" }}
+                                    />
+                                    <YAxis hide />
+                                    <Tooltip content={<DividendsTooltip currency={investment.data.currency} />} />
+                                    <Bar dataKey="dividends" fill={dividendsChartConfig.dividends.color} radius={[4, 4, 0, 0]} />
+                                </ComposedChart>
+                            </ChartContainer>
+                            <DividendsTable dividends={investment.data.dividends} currency={investment.data.currency} />
+                        </>
                     ) : (
                         <div className="flex flex-col items-center justify-center">
                             <Label className="text-sm text-muted-foreground text-center my-6">No dividends received yet</Label>
