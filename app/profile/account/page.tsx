@@ -1,6 +1,7 @@
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { UserForm } from "../_components/forms/user-form";
+import { PasswordForm } from "../_components/forms/password-form";
 
 export default function AccountPage() {
     return (
@@ -26,7 +27,7 @@ export default function AccountPage() {
                         <CardDescription>Manage your password and security settings</CardDescription>
                     </CardHeader>
                     <CardContent>
-
+                        <PasswordForm />
                     </CardContent>
                 </Card>
             </div>

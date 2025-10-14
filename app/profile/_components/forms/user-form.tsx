@@ -71,6 +71,7 @@ export function UserForm() {
                                 disabled
                             />
                         </FormControl>
+                        <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="name" render={({ field }) => (
@@ -83,6 +84,7 @@ export function UserForm() {
                                 disabled={form.formState.isSubmitting}
                             />
                         </FormControl>
+                        <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="image" render={({ field }) => (
@@ -96,9 +98,10 @@ export function UserForm() {
                                 disabled={form.formState.isSubmitting}
                             />
                         </FormControl>
+                        <FormMessage />
                     </FormItem>
                 )} />
-                <Button type="submit" className="w-full mt-2" disabled={form.formState.isSubmitting || form.formState.isDirty}>
+                <Button type="submit" className="w-full mt-2" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
                     {form.formState.isSubmitting ? <Spinner className="size-4" /> : "Save Changes"}
                 </Button>
             </form>
