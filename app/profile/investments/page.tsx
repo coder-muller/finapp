@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon } from "lucide-react";
+import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
@@ -196,7 +196,7 @@ export default function InvestmentsPage() {
                 <div className="flex items-center gap-2">
                     <Button variant="outline" onClick={() => updateInvestments()} disabled={isLoadingUpdateInvestments}>
                         {isLoadingUpdateInvestments ? <RefreshCcwIcon className="size-4 animate-spin" /> : <RefreshCcwIcon className="size-4" />}
-                        <span className="hidden md:block">Update Prices</span>
+                        <span className="hidden md:block">Update Data</span>
                     </Button>
                     <Button onClick={handleNewInvestmentOpen}>
                         <PlusIcon className="size-4" />
@@ -262,8 +262,8 @@ export default function InvestmentsPage() {
                             const dividends = investment.dividends.reduce((acc, dividend) => acc + Number(dividend.amount), 0) - (investment.dividends.reduce((acc, dividend) => acc + Number(dividend.tax), 0));
                             const currentPrice = Number(investment.currentPrice);
                             const shares = Number(investment.shares);
-                            const currentValue = shares * currentPrice + dividends;
-                            const gainLoss = currentValue - (avgBuyPrice * shares);
+                            const currentValue = shares * currentPrice;
+                            const gainLoss = currentValue + dividends - (avgBuyPrice * shares);
 
                             return (
                                 <TableRow key={investment.id}>
@@ -282,6 +282,11 @@ export default function InvestmentsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
+                                                <DropdownMenuItem>
+                                                    <InfoIcon />
+                                                    More Info
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
                                                 <DropdownMenuItem>
                                                     <PlusCircleIcon />
                                                     Add Transaction
