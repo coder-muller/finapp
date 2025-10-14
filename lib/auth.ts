@@ -9,6 +9,11 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true,
         autoSignIn: true,
-        revokeSessionsOnPasswordReset: true,
+        revokeSessionsOnPasswordReset: true,        
+    },
+    user: {
+        deleteUser:{
+            enabled: true,
+        }
     }
 });
