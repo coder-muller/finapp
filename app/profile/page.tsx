@@ -18,7 +18,7 @@ export default async function ProfilePage() {
     return (
         <div className="flex flex-col items-center justify-center w-full h-full">
             <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary">
+                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground">
                     <Bitcoin className="size-5" />
                 </div>
                 <Label className="text-2xl font-bold">Finapp</Label>

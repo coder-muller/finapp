@@ -19,6 +19,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { useInvestments } from "@/hooks/use-investments";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 import { Investment } from "@/lib/generated/prisma";
+import { useTransactions } from "@/hooks/use-transactions";
+import { useDividends } from "@/hooks/use-dividends";
 
 const newInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
@@ -36,8 +38,26 @@ const updateInvestmentSchema = z.object({
     type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND"]),
 })
 
+const newTransactionSchema = z.object({
+    type: z.enum(["BUY", "SELL"]),
+    quantity: z.coerce.number().min(0, { message: "Quantity is required" }),
+    price: z.coerce.number().min(0, { message: "Price is required" }),
+    date: z.string().min(1, { message: "Date is required" }),
+    tax: z.coerce.number().optional(),
+    observation: z.string().optional(),
+})
+
+const newDividendSchema = z.object({
+    amount: z.coerce.number().min(0, { message: "Amount is required" }),
+    date: z.string().min(1, { message: "Date is required" }),
+    tax: z.coerce.number().optional(),
+    observation: z.string().optional(),
+})
+
 type newInvestmentFormType = z.infer<typeof newInvestmentSchema>;
 type updateInvestmentFormType = z.infer<typeof updateInvestmentSchema>;
+type newTransactionFormType = z.infer<typeof newTransactionSchema>;
+type newDividendFormType = z.infer<typeof newDividendSchema>;
 
 export default function InvestmentsPage() {
 
@@ -109,10 +129,49 @@ export default function InvestmentsPage() {
         },
     })
 
+    // New Transaction Form
+    const newTransactionForm = useForm<newTransactionFormType>({
+        resolver: zodResolver(newTransactionSchema) as any,
+        defaultValues: {
+            type: "BUY",
+            quantity: 0,
+            price: 0,
+            date: "",
+            tax: undefined,
+            observation: undefined,
+        },
+    })
+
+    // New Dividend Form
+    const newDividendForm = useForm<newDividendFormType>({
+        resolver: zodResolver(newDividendSchema) as any,
+        defaultValues: {
+            amount: 0,
+            date: "",
+            tax: undefined,
+            observation: undefined,
+        },
+    })
+
     // States
     const [isNewInvestmentOpen, setIsNewInvestmentOpen] = useState(false);
     const [isUpdateInvestmentOpen, setIsUpdateInvestmentOpen] = useState(false);
     const [selectedInvestmentId, setSelectedInvestmentId] = useState<string | null>(null);
+    const [isNewTransactionOpen, setIsNewTransactionOpen] = useState(false);
+    const [isNewDividendOpen, setIsNewDividendOpen] = useState(false);
+    const [selectedTransactionInvestmentId, setSelectedTransactionInvestmentId] = useState<string | null>(null);
+    const [selectedDividendInvestmentId, setSelectedDividendInvestmentId] = useState<string | null>(null);
+
+    // Hooks for mutations dependent on selected investment
+    const {
+        newTransaction,
+        isLoadingNewTransaction,
+    } = useTransactions(selectedTransactionInvestmentId ?? "");
+
+    const {
+        newDividend,
+        isLoadingNewDividend,
+    } = useDividends(selectedDividendInvestmentId ?? "");
 
     // New Investment Submit
     const newInvestmentSubmit = newInvestmentForm.handleSubmit(async (data) => {
@@ -174,6 +233,68 @@ export default function InvestmentsPage() {
         });
         setIsUpdateInvestmentOpen(true);
     }
+
+    // Handle New Transaction Open
+    const handleOpenNewTransaction = (investment: Investment) => {
+        setSelectedTransactionInvestmentId(investment.id);
+        newTransactionForm.reset({
+            type: "BUY",
+            quantity: undefined as unknown as number,
+            price: undefined as unknown as number,
+            date: "",
+            tax: undefined,
+            observation: undefined,
+        });
+        setIsNewTransactionOpen(true);
+    }
+
+    // Handle New Dividend Open
+    const handleOpenNewDividend = (investment: Investment) => {
+        setSelectedDividendInvestmentId(investment.id);
+        newDividendForm.reset({
+            amount: undefined as unknown as number,
+            date: "",
+            tax: undefined,
+            observation: undefined,
+        });
+        setIsNewDividendOpen(true);
+    }
+
+    // New Transaction Submit
+    const newTransactionSubmit = newTransactionForm.handleSubmit(async (data) => {
+        if (!selectedTransactionInvestmentId) return;
+        try {
+            await newTransaction({
+                type: data.type,
+                quantity: data.quantity,
+                price: data.price,
+                date: data.date, // API coerces to Date
+                tax: data.tax ?? null,
+                observation: data.observation ?? undefined,
+            });
+            setIsNewTransactionOpen(false);
+            newTransactionForm.reset();
+        } catch (error) {
+            // toast handled in hook onError
+        }
+    })
+
+    // New Dividend Submit
+    const newDividendSubmit = newDividendForm.handleSubmit(async (data) => {
+        if (!selectedDividendInvestmentId) return;
+        try {
+            await newDividend({
+                amount: data.amount,
+                date: data.date, // API coerces to Date
+                tax: data.tax ?? null,
+                observation: data.observation ?? undefined,
+            });
+            setIsNewDividendOpen(false);
+            newDividendForm.reset();
+        } catch (error) {
+            // toast handled in hook onError
+        }
+    })
 
     return (
         <div className="flex flex-col gap-4">
@@ -287,11 +408,11 @@ export default function InvestmentsPage() {
                                                     More Info
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleOpenNewTransaction(investment)}>
                                                     <PlusCircleIcon />
                                                     Add Transaction
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleOpenNewDividend(investment)}>
                                                     <CoinsIcon />
                                                     Add Dividend
                                                 </DropdownMenuItem>
@@ -528,6 +649,150 @@ export default function InvestmentsPage() {
                             <DialogFooter>
                                 <Button type="submit" disabled={updateInvestmentForm.formState.isSubmitting}>
                                     {isLoadingUpdateInvestment ? <Spinner className="size-4" /> : "Save Changes"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* New Transaction Dialog */}
+            <Dialog open={isNewTransactionOpen} onOpenChange={setIsNewTransactionOpen}>
+                <DialogContent className="w-full max-w-sm md:max-w-lg lg:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Transaction</DialogTitle>
+                        <DialogDescription>Create a new transaction for this investment</DialogDescription>
+                    </DialogHeader>
+                    <Form {...newTransactionForm}>
+                        <form onSubmit={newTransactionSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <FormField control={newTransactionForm.control} name="type" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Type</FormLabel>
+                                        <FormControl>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="BUY">Buy</SelectItem>
+                                                    <SelectItem value="SELL">Sell</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newTransactionForm.control} name="date" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Date</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} type="date" disabled={newTransactionForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <FormField control={newTransactionForm.control} name="quantity" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Quantity</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="13.92736549" type="number" min={0} step={0.0000000001} disabled={newTransactionForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newTransactionForm.control} name="price" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Price</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="$8.91" type="number" min={0} step={0.0000000001} disabled={newTransactionForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newTransactionForm.control} name="tax" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Tax</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="$1.23" type="number" min={0} step={0.0000000001} disabled={newTransactionForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <FormField control={newTransactionForm.control} name="observation" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Observation</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} placeholder="Optional" disabled={newTransactionForm.formState.isSubmitting} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <DialogFooter>
+                                <Button type="submit" disabled={newTransactionForm.formState.isSubmitting}>
+                                    {newTransactionForm.formState.isSubmitting || isLoadingNewTransaction ? <Spinner className="size-4" /> : "Add Transaction"}
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    </Form>
+                </DialogContent>
+            </Dialog>
+
+            {/* New Dividend Dialog */}
+            <Dialog open={isNewDividendOpen} onOpenChange={setIsNewDividendOpen}>
+                <DialogContent className="w-full max-w-sm md:max-w-lg lg:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Add Dividend</DialogTitle>
+                        <DialogDescription>Add a new dividend to this investment</DialogDescription>
+                    </DialogHeader>
+                    <Form {...newDividendForm}>
+                        <form onSubmit={newDividendSubmit} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <FormField control={newDividendForm.control} name="amount" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Amount</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="$1.23" type="number" min={0} step={0.0000000001} disabled={newDividendForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newDividendForm.control} name="date" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Date</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} type="date" disabled={newDividendForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <FormField control={newDividendForm.control} name="tax" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Tax</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="$1.23" type="number" min={0} step={0.0000000001} disabled={newDividendForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newDividendForm.control} name="observation" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Observation</FormLabel>
+                                        <FormControl>
+                                            <Input {...field} placeholder="Optional" disabled={newDividendForm.formState.isSubmitting} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <DialogFooter>
+                                <Button type="submit" disabled={newDividendForm.formState.isSubmitting}>
+                                    {newDividendForm.formState.isSubmitting || isLoadingNewDividend ? <Spinner className="size-4" /> : "Add Dividend"}
                                 </Button>
                             </DialogFooter>
                         </form>
