@@ -29,6 +29,8 @@ class YahooFinanceService {
     private pendingRequests = new Map<string, Promise<number | null>>();
     private dividendCache = new Map<string, { events: DividendEvent[]; timestamp: number; ttl: number }>();
     private pendingDividendRequests = new Map<string, Promise<DividendEvent[]>>();
+    private monthlyPriceCache = new Map<string, { pricesByMonth: Map<string, number>; timestamp: number; ttl: number }>();
+    private pendingMonthlyPriceRequests = new Map<string, Promise<Map<string, number>>>();
     private config: YahooFinanceServiceConfig;
 
     constructor(config: YahooFinanceConfig = {}) {
@@ -62,6 +64,14 @@ class YahooFinanceService {
             }
         });
         keysToDelete.forEach(key => this.cache.delete(key));
+
+        const monthlyKeysToDelete: string[] = [];
+        this.monthlyPriceCache.forEach((cached, key) => {
+            if (!this.isCacheValid({ price: 0, timestamp: cached.timestamp, ttl: cached.ttl })) {
+                monthlyKeysToDelete.push(key);
+            }
+        });
+        monthlyKeysToDelete.forEach(key => this.monthlyPriceCache.delete(key));
     }
 
     private async fetchWithRetry(symbol: string, attempt = 1): Promise<any> {
@@ -138,6 +148,91 @@ class YahooFinanceService {
 
     private normalizeSymbol(symbol: string): string {
         return symbol.trim().toUpperCase();
+    }
+
+    private buildMonthlyCacheKey(symbol: string, period1: number, period2: number): string {
+        return `MON:${symbol}:${period1}:${period2}`;
+    }
+
+    private formatMonthKey(date: Date): string {
+        const y = date.getFullYear();
+        const m = (date.getMonth() + 1).toString().padStart(2, "0");
+        return `${y}-${m}`; // YYYY-MM
+    }
+
+    private formatMonthLabel(date: Date): string {
+        const y = date.getFullYear();
+        const m = (date.getMonth() + 1).toString().padStart(2, "0");
+        return `${m}/${y}`; // MM/YYYY
+    }
+
+    private getMonthEnd(date: Date): Date {
+        const d = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        d.setHours(23, 59, 59, 999);
+        return d;
+    }
+
+    private getMonthStart(date: Date): Date {
+        const d = new Date(date.getFullYear(), date.getMonth(), 1);
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    private addMonths(date: Date, count: number): Date {
+        const d = new Date(date);
+        d.setMonth(d.getMonth() + count);
+        return d;
+    }
+
+    private async getMonthlyCloses(symbol: string, from: Date, to: Date): Promise<Map<string, number>> {
+        if (!symbol?.trim()) return new Map();
+
+        const normalizedSymbol = this.normalizeSymbol(symbol);
+        const period1 = Math.floor(this.getMonthStart(from).getTime() / 1000);
+        const period2 = Math.floor(new Date(to).getTime() / 1000);
+        const cacheKey = this.buildMonthlyCacheKey(normalizedSymbol, period1, period2);
+
+        const cached = this.monthlyPriceCache.get(cacheKey);
+        if (cached && this.isCacheValid({ price: 0, timestamp: cached.timestamp, ttl: cached.ttl })) {
+            return new Map(cached.pricesByMonth);
+        }
+
+        const pending = this.pendingMonthlyPriceRequests.get(cacheKey);
+        if (pending) return pending;
+
+        const { cacheTtlMs } = this.getValidatedConfig();
+
+        const req = (async (): Promise<Map<string, number>> => {
+            try {
+                const result = await yahooFinance.chart(normalizedSymbol, {
+                    period1,
+                    period2,
+                    interval: "1mo",
+                    events: "history",
+                } as any);
+
+                const quotes = (((result as any)?.quotes) ?? []) as Array<{ date: Date | string | number; close?: number; adjclose?: number }>;
+                const byMonth = new Map<string, number>();
+                for (const q of quotes) {
+                    const dt = new Date((q as any).date);
+                    const key = this.formatMonthKey(dt);
+                    const close = Number(q.close ?? q.adjclose);
+                    if (!Number.isFinite(close)) continue;
+                    byMonth.set(key, close);
+                }
+
+                this.monthlyPriceCache.set(cacheKey, { pricesByMonth: byMonth, timestamp: Date.now(), ttl: cacheTtlMs });
+                return byMonth;
+            } catch (e) {
+                console.warn(`Failed to fetch monthly closes for ${normalizedSymbol}:`, e);
+                return new Map();
+            } finally {
+                this.pendingMonthlyPriceRequests.delete(cacheKey);
+            }
+        })();
+
+        this.pendingMonthlyPriceRequests.set(cacheKey, req);
+        return req;
     }
 
     async getDividendEvents(symbol: string, from?: Date, to?: Date): Promise<DividendEvent[]> {
@@ -306,6 +401,67 @@ class YahooFinanceService {
         return { created, updated, deleted, errors };
     }
 
+    async getMonthlyEquitySeries(
+        symbol: string,
+        transactions: Array<{ type: string; quantity: any; date: Date | string | number }>,
+        opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
+    ): Promise<Array<{ month: string; value: number }>> {
+        if (!symbol?.trim()) return [];
+        if (!transactions?.length) return [];
+
+        const normalizedSymbol = this.normalizeSymbol(symbol);
+
+        // Normalize and sort transactions ascending by date
+        const normalizedTx = [...transactions]
+            .map(t => ({ type: String((t as any).type), quantity: (t as any).quantity, date: new Date((t as any).date) }))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        const firstDate = normalizedTx[0]?.date ? new Date(normalizedTx[0].date) : new Date();
+        const now = new Date();
+
+        // Fetch monthly closes once for the entire window
+        const monthlyCloses = await this.getMonthlyCloses(normalizedSymbol, firstDate, now);
+
+        const series: Array<{ month: string; value: number }> = [];
+
+        // Iterate month by month starting from the first transaction month
+        let cursor = this.getMonthStart(firstDate);
+        let hadPositive = false;
+        while (cursor.getTime() <= now.getTime()) {
+            const monthEnd = (cursor.getMonth() === now.getMonth() && cursor.getFullYear() === now.getFullYear())
+                ? now
+                : this.getMonthEnd(cursor);
+
+            const shares = this.getSharesAtDate(normalizedTx as any, monthEnd);
+
+            if (shares <= 0) {
+                if (opts.stopWhenZero && hadPositive) {
+                    break; // stop at the last month with shares > 0
+                }
+                // If we never had positive shares yet (edge case), just advance
+            } else {
+                hadPositive = true;
+                const key = this.formatMonthKey(cursor);
+                let price = monthlyCloses.get(key) ?? null;
+
+                // For current month, monthly close may not exist; fallback to current price
+                if ((cursor.getMonth() === now.getMonth() && cursor.getFullYear() === now.getFullYear()) && (price === null || price === undefined)) {
+                    price = await this.getCurrentPrice(normalizedSymbol);
+                }
+
+                if (price !== null && price !== undefined) {
+                    const value = this.roundDecimal(Number(price) * Number(shares), 2);
+                    series.push({ month: this.formatMonthLabel(cursor), value });
+                }
+            }
+
+            // Advance to next month
+            cursor = this.addMonths(cursor, 1);
+        }
+
+        return series;
+    }
+
     // Method to manually invalidate cache for a specific symbol
     invalidateCache(symbol: string): void {
         const normalizedSymbol = symbol.trim().toUpperCase();
@@ -347,6 +503,15 @@ export async function getDividendEvents(symbol: string, from?: Date, to?: Date):
 
 export async function syncInvestmentDividends(prismaOrTx: PrismaClient | Prisma.TransactionClient, investmentId: string) {
     return yahooFinanceService.syncInvestmentDividends(prismaOrTx, investmentId);
+}
+
+// Equity series for a single investment, month by month
+export async function getMonthlyEquitySeries(
+    symbol: string,
+    transactions: Array<{ type: string; quantity: any; date: Date | string | number }>,
+    opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
+): Promise<Array<{ month: string; value: number }>> {
+    return yahooFinanceService.getMonthlyEquitySeries(symbol, transactions, opts);
 }
 
 // Export types and utilities for advanced usage

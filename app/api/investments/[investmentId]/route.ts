@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { yahooFinanceService } from "@/lib/yahoo-finance";
 
 const updateInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
@@ -47,17 +48,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         return NextResponse.json({ error: "Investment not found" }, { status: 404 });
     }
 
-    // Get total value of the investment by monthly
-    const inicialDate = investment.transactions[investment.transactions.length - 1].date;
-    const finalDate = Number(investment.shares) === 0 ? investment.transactions[0].date : new Date();
+    // Build equity series month by month using Yahoo Finance monthly closes
+    const equitySeries = await yahooFinanceService.getMonthlyEquitySeries(
+        investment.symbol,
+        investment.transactions.map((t) => ({ type: t.type, quantity: t.quantity, date: new Date(t.date) })),
+        { stopWhenZero: true },
+    );
 
-    // Todo: get the last day of every month between the initial and final date(if is the last month, get the final date)
-
-    // Create an array of objects with the month and the total value based on the total sheres the user had at the end of that month
-
-    // Return the array of objects with the month and the total value to present in the chart EX: [{ month: "01/2025", value: 1740.87 }, { month: "02/2025", value: 2041.54 }]
-
-    return NextResponse.json({ data: investment }, { status: 200 });
+    return NextResponse.json({ data: { ...investment, equitySeries } }, { status: 200 });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ investmentId: string }> }) {

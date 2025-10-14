@@ -16,6 +16,18 @@ type InvestmentWithTransactionsAndDividendsGainLoss = Investment & {
     sellGainLoss: SellGainLoss[];
 }
 
+// Single Investment types
+type InvestmentWithRelations = Investment & {
+    transactions: Transaction[];
+    dividends: Dividend[];
+    sellGainLoss: SellGainLoss[];
+    equitySeries?: Array<{ month: string; value: number }>;
+}
+
+interface getInvestmentResponse {
+    data: InvestmentWithRelations;
+}
+
 // Types
 interface getInvestmentsParams {
     orderBy: "symbol:asc" | "symbol:desc" | "type:asc" | "type:desc" | "currentPrice:asc" | "currentPrice:desc" | "shares:asc" | "shares:desc";
@@ -103,6 +115,33 @@ const updateInvestmentsApi = async () => {
     const response = await axios.patch<updateInvestmentsResponse>("/api/update");
 
     return response.data;
+}
+
+const getInvestmentApi = async (investmentId: string) => {
+    const response = await axios.get<getInvestmentResponse>(`/api/investments/${investmentId}`);
+
+    return response.data;
+}
+
+// Single Investment
+export const useInvestment = (investmentId: string) => {
+    const {
+        data: investment,
+        isLoading: isLoadingInvestment,
+        isError: isErrorInvestment,
+        refetch: refetchInvestment,
+    } = useQuery({
+        queryKey: ["investment", investmentId],
+        queryFn: () => getInvestmentApi(investmentId),
+        enabled: !!investmentId,
+    })
+
+    return {
+        investment,
+        isLoadingInvestment,
+        isErrorInvestment,
+        refetchInvestment,
+    }
 }
 
 // Main Hook
