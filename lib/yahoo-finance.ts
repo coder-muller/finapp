@@ -269,7 +269,7 @@ class YahooFinanceService {
                 }
 
                 const amount = this.roundDecimal(ev.amount * sharesAtDate, 6);
-                const tax = this.roundDecimal(amount * 0.30, 6);
+                const tax = investment.currency === "USD" ? this.roundDecimal(amount * 0.30, 6) : 0;
 
                 if (existing) {
                     const existingAmount = Number((existing as any).amount);

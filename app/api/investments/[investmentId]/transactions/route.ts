@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { syncInvestmentDividends } from "@/lib/yahoo-finance";
 
 const newTransactionSchema = z.object({
     type: z.enum(["BUY", "SELL"], { message: "Type is required" }),
@@ -120,7 +121,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 shares: { increment: data.type === "BUY" ? data.quantity : -data.quantity },
             },
         });
+
+        // Remove all future dividends
+        await tx.dividend.deleteMany({
+            where: {
+                investmentId: investmentId,
+                date: { gt: data.date },
+            },
+        });
     })
+
+    // Sync dividends
+    await syncInvestmentDividends(prisma, investmentId);
 
     return NextResponse.json({ message: "Transaction created successfully" }, { status: 201 });
 }

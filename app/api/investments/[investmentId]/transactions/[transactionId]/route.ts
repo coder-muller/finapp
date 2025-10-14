@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { syncInvestmentDividends } from "@/lib/yahoo-finance";
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ investmentId: string, transactionId: string }> }) {
     // Get session
@@ -39,7 +40,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     await prisma.$transaction(async (tx) => {
-       
+
         // Delete transaction
         await tx.transaction.delete({
             where: {
@@ -56,8 +57,19 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
                 shares: { increment: transaction.type === "BUY" ? -transaction.quantity : transaction.quantity },
             },
         });
-        
+
+        // Remove all future dividends
+        await tx.dividend.deleteMany({
+            where: {
+                investmentId: investmentId,
+                date: { gt: transaction.date },
+            },
+        });
+
     });
+
+    // Sync dividends
+    await syncInvestmentDividends(prisma, investmentId);
 
     return NextResponse.json({ message: "Transaction deleted successfully" }, { status: 200 });
 }

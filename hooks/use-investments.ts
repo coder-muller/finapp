@@ -6,12 +6,14 @@ import {
     Transaction,
     Dividend,
     InvestmentType,
+    SellGainLoss,
 } from "@/lib/generated/prisma";
 import { toast } from "sonner";
 
-type InvestmentWithTransactionsAndDividends = Investment & {
+type InvestmentWithTransactionsAndDividendsGainLoss = Investment & {
     transactions: Transaction[];
     dividends: Dividend[];
+    sellGainLoss: SellGainLoss[];
 }
 
 // Types
@@ -23,7 +25,7 @@ interface getInvestmentsParams {
 }
 
 interface getInvestmentsResponse {
-    data: InvestmentWithTransactionsAndDividends[];
+    data: InvestmentWithTransactionsAndDividendsGainLoss[];
     total: number;
 }
 

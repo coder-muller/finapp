@@ -75,6 +75,13 @@ enum InvestmentType {
   ETF
   CRYPTO
   FUND
+  REAL_ESTATE
+  OTHER
+}
+
+enum Currency {
+  USD
+  BRL
 }
 
 model Investment {
@@ -90,11 +97,14 @@ model Investment {
   currentPrice Decimal @db.Decimal(18, 6)
   shares       Decimal @db.Decimal(18, 8)
 
+  currency Currency @default(USD)
+
   transactions Transaction[]
   dividends    Dividend[]
+  sellGainLoss SellGainLoss[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
 
   @@index([userId])
   @@map("investments")
@@ -117,12 +127,30 @@ model Transaction {
   date        DateTime
   tax         Decimal?        @db.Decimal(18, 6) // Tax withheld from the transaction
   observation String?
+  
+  sellGainLoss SellGainLoss[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
 
   @@index([investmentId])
   @@map("transactions")
+}
+
+model SellGainLoss {
+  id String @id @default(cuid())
+
+  investmentId String
+  investment   Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  realizedProfitLoss Decimal @db.Decimal(18, 6)
+
+  @@index([transactionId])
+  @@index([investmentId])
+  @@map("sell_gain_losses")
 }
 
 model Dividend {

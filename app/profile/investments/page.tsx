@@ -6,7 +6,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/in
 import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon, SortAscIcon, SortDescIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,7 +25,7 @@ import { useDividends } from "@/hooks/use-dividends";
 const newInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
     name: z.string().min(1, { message: "Name is required" }),
-    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND"]),
+    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND", "REAL_ESTATE", "OTHER"]),
     buyPrice: z.coerce.number().min(0, { message: "Buy price is required" }),
     buyDate: z.string().min(1, { message: "Buy date is required" }),
     shares: z.coerce.number().min(0, { message: "Shares are required" }),
@@ -35,7 +35,7 @@ const newInvestmentSchema = z.object({
 const updateInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
     name: z.string().min(1, { message: "Name is required" }),
-    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND"]),
+    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND", "REAL_ESTATE", "OTHER"]),
 })
 
 const newTransactionSchema = z.object({
@@ -329,7 +329,6 @@ export default function InvestmentsPage() {
             </div>
 
             <div className="flex flex-col gap-4 border border-border rounded-md p-4">
-
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex flex-col">
                         <Label className="text-sm font-normal">All Investments</Label>
@@ -382,7 +381,6 @@ export default function InvestmentsPage() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-
                 </div>
 
                 <Table>
@@ -447,12 +445,12 @@ export default function InvestmentsPage() {
                             return (
                                 <TableRow key={investment.id}>
                                     <TableCell className="font-medium text-center">{investment.symbol}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(avgBuyPrice)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(currentPrice)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(avgBuyPrice, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(currentPrice, investment.currency)}</TableCell>
                                     <TableCell className="text-right font-mono">{shares}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(dividends)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(gainLoss)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(currentValue)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(dividends, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(gainLoss, investment.currency)}</TableCell>
+                                    <TableCell className="text-right font-mono">{formatCurrency(currentValue, investment.currency)}</TableCell>
                                     <TableCell className=" text-center">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -482,7 +480,7 @@ export default function InvestmentsPage() {
                                                 <DropdownMenuSeparator />
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
-                                                        <DropdownMenuItem className="text-destructive focus:text-destructive">
+                                                        <DropdownMenuItem className={cn("text-destructive focus:text-destructive", isLoadingDeleteInvestment && "opacity-50 animate-pulse")} onSelect={(e) => e.preventDefault()} disabled={isLoadingDeleteInvestment}>
                                                             <TrashIcon className="text-destructive" />
                                                             Delete
                                                         </DropdownMenuItem>
@@ -567,7 +565,7 @@ export default function InvestmentsPage() {
                                     <FormItem>
                                         <FormLabel>Type</FormLabel>
                                         <FormControl>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={newInvestmentForm.formState.isSubmitting}>
                                                 <SelectTrigger className="w-full">
                                                     <SelectValue placeholder="Select type" />
                                                 </SelectTrigger>
@@ -576,6 +574,8 @@ export default function InvestmentsPage() {
                                                     <SelectItem value="ETF">ETF</SelectItem>
                                                     <SelectItem value="CRYPTO">Crypto</SelectItem>
                                                     <SelectItem value="FUND">Fund</SelectItem>
+                                                    <SelectItem value="REAL_ESTATE">Real Estate</SelectItem>
+                                                    <SelectItem value="OTHER">Other</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
@@ -679,7 +679,7 @@ export default function InvestmentsPage() {
                                     <FormItem>
                                         <FormLabel>Type</FormLabel>
                                         <FormControl>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={updateInvestmentForm.formState.isSubmitting}>
                                                 <SelectTrigger className="w-full">
                                                     <SelectValue placeholder="Select type" />
                                                 </SelectTrigger>
@@ -688,6 +688,8 @@ export default function InvestmentsPage() {
                                                     <SelectItem value="ETF">ETF</SelectItem>
                                                     <SelectItem value="CRYPTO">Crypto</SelectItem>
                                                     <SelectItem value="FUND">Fund</SelectItem>
+                                                    <SelectItem value="REAL_ESTATE">Real Estate</SelectItem>
+                                                    <SelectItem value="OTHER">Other</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </FormControl>
@@ -728,7 +730,7 @@ export default function InvestmentsPage() {
                                     <FormItem>
                                         <FormLabel>Type</FormLabel>
                                         <FormControl>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={newTransactionForm.formState.isSubmitting}>
                                                 <SelectTrigger className="w-full">
                                                     <SelectValue placeholder="Select type" />
                                                 </SelectTrigger>

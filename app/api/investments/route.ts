@@ -3,13 +3,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma";
-import { getCurrentPrice } from "@/lib/yahoo-finance";
+import { getCurrentPrice, syncInvestmentDividends } from "@/lib/yahoo-finance";
 
 const newInvestmentSchema = z.object({
     // Investment Data
     symbol: z.string().min(1, { message: "Symbol is required" }),
     name: z.string().min(1, { message: "Name is required" }),
-    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND"]),
+    type: z.enum(["STOCK", "ETF", "CRYPTO", "FUND", "REAL_ESTATE", "OTHER"]),
 
     // Transaction Data
     buyPrice: z.number().min(0, { message: "Buy price is required" }),
@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
         include: {
             transactions: true,
             dividends: true,
+            sellGainLoss: true,
         }
     });
 
@@ -105,7 +106,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Current price not found" }, { status: 400 });
     }
 
-    await prisma.$transaction(async (tx) => {
+    // Create investment
+    const newInvestment = await prisma.$transaction(async (tx) => {
         const newInvestment = await tx.investment.create({
             data: {
                 userId: session.user.id,
@@ -114,6 +116,7 @@ export async function POST(request: NextRequest) {
                 type: data.type,
                 currentPrice: currentPrice,
                 shares: data.shares,
+                currency: data.symbol.endsWith(".SA") ? "BRL" : "USD",
             },
         })
 
@@ -127,7 +130,12 @@ export async function POST(request: NextRequest) {
                 tax: data.fees ? data.fees : null,
             },
         })
+
+        return newInvestment;
     })
+
+    // Sync dividends
+    await syncInvestmentDividends(prisma, newInvestment.id);
 
     return NextResponse.json({ message: "Investment created successfully" }, { status: 201 });
 }
