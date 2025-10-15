@@ -21,6 +21,11 @@ model User {
   sessions    Session[]
   accounts    Account[]
 
+  role       String?
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
+
   @@unique([email])
   @@map("users")
 }
@@ -35,6 +40,8 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  impersonatedBy String?
 
   @@unique([token])
   @@map("sessions")
@@ -103,8 +110,8 @@ model Investment {
   dividends    Dividend[]
   sellGainLoss SellGainLoss[]
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([userId])
   @@map("investments")
@@ -121,17 +128,16 @@ model Transaction {
   investmentId String
   investment   Investment @relation(fields: [investmentId], references: [id], onDelete: Cascade)
 
-  type        TransactionType
-  quantity    Decimal         @db.Decimal(18, 8)
-  price       Decimal         @db.Decimal(18, 6)
-  date        DateTime
-  tax         Decimal?        @db.Decimal(18, 6) // Tax withheld from the transaction
-  observation String?
-  
+  type         TransactionType
+  quantity     Decimal         @db.Decimal(18, 8)
+  price        Decimal         @db.Decimal(18, 6)
+  date         DateTime
+  tax          Decimal?        @db.Decimal(18, 6) // Tax withheld from the transaction
+  observation  String?
   sellGainLoss SellGainLoss[]
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @default(now()) @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@index([investmentId])
   @@map("transactions")
