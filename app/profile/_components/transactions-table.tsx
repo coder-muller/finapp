@@ -51,10 +51,10 @@ export default function TransactionsTable({ transactions, currency }: Transactio
                             <TableRow key={t.id} className={cn(t.type === "SELL" && "text-destructive")}>
                                 <TableCell className={cn("font-medium")}>{t.type === "BUY" ? "Buy" : "Sell"}</TableCell>
                                 <TableCell className="text-left">{formatDate(t.date, currency)}</TableCell>
-                                <TableCell className="text-right font-mono">{Number(t.quantity)}</TableCell>
-                                <TableCell className="text-right font-mono">{formatCurrency(Number(t.price), currency)}</TableCell>
-                                <TableCell className="text-right font-mono">{formatCurrency(Number(t.tax ?? 0), currency)}</TableCell>
-                                <TableCell className="text-right font-mono">{formatCurrency(Number(t.price) * Number(t.quantity) + Number(t.tax ?? 0), currency)}</TableCell>
+                                <TableCell className="text-right">{Number(t.quantity)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(Number(t.price), currency)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(Number(t.tax ?? 0), currency)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(Number(t.price) * Number(t.quantity) + Number(t.tax ?? 0), currency)}</TableCell>
                                 <TableCell className="text-center">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>

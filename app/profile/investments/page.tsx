@@ -3,7 +3,7 @@
 import { Label } from "@/components/ui/label";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
-import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon, SortAscIcon, SortDescIcon } from "lucide-react";
+import { PlusIcon, RefreshCcwIcon, SearchIcon, MoreHorizontalIcon, PencilIcon, TrashIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, CoinsIcon, InfoIcon, SortAscIcon, SortDescIcon, FilterIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { cn, formatCurrency, calculateInvestmentMetrics } from "@/lib/utils";
@@ -18,10 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useInvestments } from "@/hooks/use-investments";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
-import { Investment } from "@/lib/generated/prisma";
+import { Currency, Investment, InvestmentType } from "@/lib/generated/prisma";
 import { useTransactions } from "@/hooks/use-transactions";
 import { useDividends } from "@/hooks/use-dividends";
 import Link from "next/link";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 
 const newInvestmentSchema = z.object({
     symbol: z.string().min(1, { message: "Symbol is required" }),
@@ -95,6 +96,9 @@ export default function InvestmentsPage() {
         limit,
         page,
         orderBy,
+        type,
+        status,
+        currency,
 
         // Computed Values
         hasInvestments,
@@ -106,6 +110,9 @@ export default function InvestmentsPage() {
         handleLimit,
         handlePage,
         handleOrderBy,
+        handleType,
+        handleStatus,
+        handleCurrency,
     } = useInvestments()
 
     // New Investment Form
@@ -164,6 +171,7 @@ export default function InvestmentsPage() {
     const [isNewDividendOpen, setIsNewDividendOpen] = useState(false);
     const [selectedTransactionInvestmentId, setSelectedTransactionInvestmentId] = useState<string | null>(null);
     const [selectedDividendInvestmentId, setSelectedDividendInvestmentId] = useState<string | null>(null);
+    const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
     // Hooks for mutations dependent on selected investment
     const {
@@ -335,53 +343,59 @@ export default function InvestmentsPage() {
                         <Label className="text-sm font-normal">All Investments</Label>
                         <Label className="text-xs text-muted-foreground">View all your investments</Label>
                     </div>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="outline">
-                                {orderBy.includes("asc") ? <SortAscIcon /> : <SortDescIcon />}
-                                <span className="hidden md:block">
-                                    {orderBy.split(":")[0].charAt(0).toUpperCase() + orderBy.split(":")[0].slice(1)}
-                                </span>
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleOrderBy("symbol:asc")}>
-                                <SortAscIcon />
-                                Symbol
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOrderBy("symbol:desc")}>
-                                <SortDescIcon />
-                                Symbol
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOrderBy("type:asc")}>
-                                <SortAscIcon />
-                                Type
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOrderBy("type:desc")}>
-                                <SortDescIcon />
-                                Type
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOrderBy("currentPrice:asc")}>
-                                <SortAscIcon />
-                                Current Price
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOrderBy("currentPrice:desc")}>
-                                <SortDescIcon />
-                                Current Price
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOrderBy("shares:asc")}>
-                                <SortAscIcon />
-                                Shares
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOrderBy("shares:desc")}>
-                                <SortDescIcon />
-                                Shares
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" onClick={() => setIsFilterSheetOpen(true)}>
+                            <FilterIcon className="size-4" />
+                            <span className="hidden md:block">Filter</span>
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">
+                                    {orderBy.includes("asc") ? <SortAscIcon /> : <SortDescIcon />}
+                                    <span className="hidden md:block">
+                                        {orderBy.split(":")[0].charAt(0).toUpperCase() + orderBy.split(":")[0].slice(1)}
+                                    </span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleOrderBy("symbol:asc")}>
+                                    <SortAscIcon />
+                                    Symbol
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOrderBy("symbol:desc")}>
+                                    <SortDescIcon />
+                                    Symbol
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleOrderBy("type:asc")}>
+                                    <SortAscIcon />
+                                    Type
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOrderBy("type:desc")}>
+                                    <SortDescIcon />
+                                    Type
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleOrderBy("currentPrice:asc")}>
+                                    <SortAscIcon />
+                                    Current Price
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOrderBy("currentPrice:desc")}>
+                                    <SortDescIcon />
+                                    Current Price
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleOrderBy("shares:asc")}>
+                                    <SortAscIcon />
+                                    Shares
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleOrderBy("shares:desc")}>
+                                    <SortDescIcon />
+                                    Shares
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
 
                 <Table>
@@ -435,12 +449,12 @@ export default function InvestmentsPage() {
                             return (
                                 <TableRow key={investment.id} className={cn(metrics.shares === 0 && "text-muted-foreground opacity-65")}>
                                     <TableCell className="font-medium text-center">{investment.symbol}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.avgBuyPrice, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.currentPrice, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{metrics.shares}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.totalDividends, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.totalProfitLoss, investment.currency)}</TableCell>
-                                    <TableCell className="text-right font-mono">{formatCurrency(metrics.currentValue, investment.currency)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(metrics.avgBuyPrice, investment.currency)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(metrics.currentPrice, investment.currency)}</TableCell>
+                                    <TableCell className="text-right">{metrics.shares}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(metrics.totalDividends, investment.currency)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(metrics.totalProfitLoss, investment.currency)}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(metrics.currentValue, investment.currency)}</TableCell>
                                     <TableCell className=" text-center">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -576,21 +590,6 @@ export default function InvestmentsPage() {
                                 )} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                                <FormField control={newInvestmentForm.control} name="buyPrice" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Buy Price</FormLabel>
-                                        <FormControl>
-                                            <Input {...field}
-                                                placeholder="$8.91"
-                                                type="number"
-                                                min={0}
-                                                step={0.0000000001}
-                                                disabled={newInvestmentForm.formState.isSubmitting}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
                                 <FormField control={newInvestmentForm.control} name="buyDate" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Buy Date</FormLabel>
@@ -609,7 +608,22 @@ export default function InvestmentsPage() {
                                         <FormLabel>Shares</FormLabel>
                                         <FormControl>
                                             <Input {...field}
-                                                placeholder="13.92736549"
+                                                placeholder="22.92736549"
+                                                type="number"
+                                                min={0}
+                                                step={0.0000000001}
+                                                disabled={newInvestmentForm.formState.isSubmitting}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                                <FormField control={newInvestmentForm.control} name="buyPrice" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Buy Price</FormLabel>
+                                        <FormControl>
+                                            <Input {...field}
+                                                placeholder="$8.91"
                                                 type="number"
                                                 min={0}
                                                 step={0.0000000001}
@@ -750,7 +764,7 @@ export default function InvestmentsPage() {
                                     <FormItem>
                                         <FormLabel>Quantity</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="13.92736549" type="number" min={0} step={0.0000000001} disabled={newTransactionForm.formState.isSubmitting} />
+                                            <Input {...field} placeholder="22.92736549" type="number" min={0} step={0.0000000001} disabled={newTransactionForm.formState.isSubmitting} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -851,6 +865,60 @@ export default function InvestmentsPage() {
                     </Form>
                 </DialogContent>
             </Dialog>
+
+            <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+                <SheetContent>
+                    <SheetHeader>
+                        <SheetTitle>Filter</SheetTitle>
+                        <SheetDescription>Filter your investments</SheetDescription>
+                    </SheetHeader>
+                    <div className="space-y-4 px-4">
+                        <div className="flex flex-col gap-1">
+                            <Label className="text-xs">Investment Type</Label>
+                            <Select value={type} onValueChange={(value) => handleType(value as "all" | InvestmentType)}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="STOCK">Stock</SelectItem>
+                                    <SelectItem value="ETF">ETF</SelectItem>
+                                    <SelectItem value="CRYPTO">Crypto</SelectItem>
+                                    <SelectItem value="FUND">Fund</SelectItem>
+                                    <SelectItem value="REAL_ESTATE">Real Estate</SelectItem>
+                                    <SelectItem value="OTHER">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Label className="text-xs">Status</Label>
+                            <Select value={status} onValueChange={(value) => handleStatus(value as "all" | "active" | "inactive")}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                            <Label className="text-xs">Currency</Label>
+                            <Select value={currency} onValueChange={(value) => handleCurrency(value as "all" | Currency)}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select currency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="USD">USD</SelectItem>
+                                    <SelectItem value="BRL">BRL</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
         </div>
     );

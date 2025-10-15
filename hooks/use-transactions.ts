@@ -8,6 +8,7 @@ interface getTransactionsParams {
     investmentId: string;
     limit: number;
     page: number;
+    
 }
 
 interface getTransactionsResponse {

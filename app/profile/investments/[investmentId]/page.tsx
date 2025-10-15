@@ -139,7 +139,7 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
                         <CardTitle>Current Value</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Label className="text-2xl font-mono">{formatCurrency(metrics.currentValue, investment.data.currency)}</Label>
+                        <Label className="text-2xl">{formatCurrency(metrics.currentValue, investment.data.currency)}</Label>
                     </CardContent>
                     <CardFooter>
                         <Label className="text-sm text-muted-foreground">{formatCurrency(metrics.totalInvested, investment.data.currency)} invested</Label>
@@ -150,7 +150,7 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
                         <CardTitle>Current Price</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Label className="text-2xl font-mono">{formatCurrency(metrics.currentPrice, investment.data.currency)}</Label>
+                        <Label className="text-2xl">{formatCurrency(metrics.currentPrice, investment.data.currency)}</Label>
                     </CardContent>
                     <CardFooter>
                         <Label className="text-sm text-muted-foreground">{metrics.shares} shares</Label>
@@ -161,7 +161,7 @@ export default function InvestmentPage({ params }: { params: Promise<{ investmen
                         <CardTitle>Profit/Loss</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Label className={`text-2xl font-mono ${metrics.totalProfitLoss >= 0 ? "text-primary" : "text-destructive"}`}>
+                        <Label className={`text-2xl ${metrics.totalProfitLoss >= 0 ? "text-primary" : "text-destructive"}`}>
                             {formatCurrency(metrics.totalProfitLoss, investment.data.currency)}
                         </Label>
                     </CardContent>

@@ -28,10 +28,18 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Get search params
+    // Get params
     const { searchParams } = new URL(request.url);
+    // Get order by params
     const orderBy = searchParams.get("orderBy") || "symbol:asc";
+
+    // Get Filter params
     const search = searchParams.get("search");
+    const type = searchParams.get("type"); // STOCK, ETF, CRYPTO, FUND, REAL_ESTATE, OTHER, all = all
+    const status = searchParams.get("status"); // active = shares > 0, inactive = shares = 0, all = all
+    const currency = searchParams.get("currency"); // USD, BRL, all = all
+
+    // Get pagination params
     const limit = searchParams.get("limit") || "10";
     const page = searchParams.get("page") || "1";
 
@@ -39,6 +47,9 @@ export async function GET(request: NextRequest) {
     const whereConditions: Prisma.InvestmentWhereInput = {
         userId: session.user.id,
         ...(search && { OR: [{ name: { contains: search, mode: "insensitive" } }, { symbol: { contains: search, mode: "insensitive" } }] }),
+        ...(type && type !== "all" && { type: type as Prisma.EnumInvestmentTypeFilter }),
+        ...(status && status !== "all" && { shares: status === "active" ? { gt: 0 } : 0 }),
+        ...(currency && currency !== "all" && { currency: currency as Prisma.EnumCurrencyFilter }),
     };
 
     // Get investments

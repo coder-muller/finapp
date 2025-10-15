@@ -7,6 +7,7 @@ import {
     Dividend,
     InvestmentType,
     SellGainLoss,
+    Currency,
 } from "@/lib/generated/prisma";
 import { toast } from "sonner";
 
@@ -30,6 +31,9 @@ interface getInvestmentResponse {
 
 // Types
 interface getInvestmentsParams {
+    type: "all" | InvestmentType;
+    status: "all" | "active" | "inactive";
+    currency: "all" | Currency;
     orderBy: "symbol:asc" | "symbol:desc" | "type:asc" | "type:desc" | "currentPrice:asc" | "currentPrice:desc" | "shares:asc" | "shares:desc";
     search: string;
     limit: number;
@@ -154,6 +158,9 @@ export const useInvestments = () => {
     const [limit, setLimit] = useState(10);
     const [page, setPage] = useState(1);
     const [orderBy, setOrderBy] = useState<"symbol:asc" | "symbol:desc" | "type:asc" | "type:desc" | "currentPrice:asc" | "currentPrice:desc" | "shares:asc" | "shares:desc">("symbol:asc");
+    const [type, setType] = useState<"all" | InvestmentType>("all");
+    const [status, setStatus] = useState<"all" | "active" | "inactive">("active");
+    const [currency, setCurrency] = useState<"all" | Currency>("all");
 
     // Get Investments
     const {
@@ -162,12 +169,15 @@ export const useInvestments = () => {
         isError: isErrorInvestments,
         refetch: refetchInvestments,
     } = useQuery({
-        queryKey: ["investments", { search, limit, page, orderBy }],
+        queryKey: ["investments", { search, limit, page, orderBy, type, status, currency }],
         queryFn: () => getInvestmentsApi({
             search,
             limit,
             page,
             orderBy,
+            type,
+            status,
+            currency,
         }),
     })
 
@@ -260,6 +270,21 @@ export const useInvestments = () => {
         setPage(1);
     }
 
+    const handleType = (value: "all" | InvestmentType) => {
+        setType(value);
+        setPage(1);
+    }
+
+    const handleStatus = (value: "all" | "active" | "inactive") => {
+        setStatus(value);
+        setPage(1);
+    }
+
+    const handleCurrency = (value: "all" | Currency) => {
+        setCurrency(value);
+        setPage(1);
+    }
+
     return {
         // Queries
         investments,
@@ -292,6 +317,10 @@ export const useInvestments = () => {
         limit,
         page,
         orderBy,
+        type,
+        status,
+        currency,
+
         // Computed Values
         hasInvestments,
         hasNextPage,
@@ -302,6 +331,9 @@ export const useInvestments = () => {
         handleLimit,
         handlePage,
         handleOrderBy,
+        handleType,
+        handleStatus,
+        handleCurrency,
     }
 
 }

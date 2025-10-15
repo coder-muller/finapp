@@ -54,8 +54,8 @@ export default function DividendsTable({ dividends, currency }: DividendsTablePr
                         dividends.map((d) => (
                             <TableRow key={d.id}>
                                 <TableCell className="font-medium">{formatDate(d.date, currency)}</TableCell>
-                                <TableCell className="text-right font-mono">{formatCurrency(Number(d.amount), currency)}</TableCell>
-                                <TableCell className="text-right font-mono">{formatCurrency(Number(d.tax ?? 0), currency)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(Number(d.amount), currency)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(Number(d.tax ?? 0), currency)}</TableCell>
                                 <TableCell className="text-left">{d.observation ?? "—"}</TableCell>
                                 <TableCell className="text-center">
                                     <DropdownMenu>
