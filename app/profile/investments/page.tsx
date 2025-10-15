@@ -168,7 +168,7 @@ export default function InvestmentsPage() {
         if (investments) {
             updateInvestments();
         }
-    }, [investments])
+    }, [])
 
     // States
     const [isNewInvestmentOpen, setIsNewInvestmentOpen] = useState(false);
