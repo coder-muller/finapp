@@ -27,7 +27,7 @@ const valueChartConfig = {
 const dividendsChartConfig = {
     dividends: {
         label: "Dividends",
-        color: "var(--chart-3)",
+        color: "var(--chart-1)",
     },
 } satisfies ChartConfig;
 

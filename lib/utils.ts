@@ -17,7 +17,7 @@ export function formatDate(date: Date | string | number, currency: Currency) {
 
   const dateObj = new Date(date);
 
-  return new Intl.DateTimeFormat(currency === "USD" ? "en-US" : "pt-BR", {
+  return new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeZone: "UTC",
   }).format(dateObj)
