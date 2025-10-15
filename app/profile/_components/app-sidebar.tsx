@@ -2,7 +2,7 @@
 
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
 import { usePathname, useRouter } from "next/navigation";
-import { AreaChart, BadgeCheck, Bitcoin, ListTree, LogOut, Moon, Sun } from "lucide-react";
+import { AreaChart, BadgeCheck, Bitcoin, ListTree, LogOut, Moon, Sun, ShieldCheck } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "lucide-react";
@@ -12,7 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useTheme } from "next-themes";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const navItems = [
     { title: "Dashboard", href: "/profile/dashboard", icon: <AreaChart /> },
@@ -26,6 +26,24 @@ export default function AppSidebar() {
     const router = useRouter()
 
     const { data: session, isPending } = authClient.useSession()
+
+    const [hasAdminPermission, setHasAdminPermission] = useState(false)
+    const checkAdminPermission = async () => {
+        if (!session?.user?.id) return
+
+        const { data } = await authClient.admin.hasPermission({
+            userId: session.user.id,
+            permission: { user: ["list"] }
+        })
+        setHasAdminPermission(data?.success ?? false)
+    }
+
+    useEffect(() => {
+        if (session) {
+            checkAdminPermission()
+        }
+    }, [session])
+
 
     useEffect(() => {
         if (!session && !isPending) {
@@ -127,6 +145,17 @@ export default function AppSidebar() {
                                         </div>
                                     </div>
                                 </DropdownMenuLabel>
+                                {hasAdminPermission && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <Link href="/profile/admin">
+                                            <DropdownMenuItem>
+                                                <ShieldCheck />
+                                                Admin
+                                            </DropdownMenuItem>
+                                        </Link>
+                                    </>
+                                )}
                                 <DropdownMenuSeparator />
                                 <DropdownMenuGroup>
                                     <Link href="/profile/account">
