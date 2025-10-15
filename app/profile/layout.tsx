@@ -2,6 +2,7 @@ import AppSidebar from "@/app/profile/_components/app-sidebar";
 import Header from "@/app/profile/_components/header";
 import { QueryProvider } from "@/components/query-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { InpersonateButton } from "./_components/inpersonate-button";
 
 export default function ProfileLayout({ children }: { children: React.ReactNode }) {
     return (
@@ -14,6 +15,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
                         <div className="flex-1 w-full md:h-full py-4 px-4 md:px-8 md:overflow-y-auto max-w-7xl mx-auto">
                             {children}
                         </div>
+                        <InpersonateButton />
                     </div>
                 </SidebarInset>
             </SidebarProvider>

@@ -1,7 +1,9 @@
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { UsersList } from "../_components/users-list";
 
 export default async function AdminPage() {
 
@@ -20,11 +22,20 @@ export default async function AdminPage() {
     if (!hasPermission.success || hasPermission.error) return redirect("/profile")
 
     return (
-        <div className="flex flex-col w-full h-full max-w-7xl mx-auto">
+        <div className="flex flex-col w-full max-w-7xl mx-auto gap-4">
             <div className="flex flex-col">
-                <Label className="text-xl font-bold">Admin</Label>
-                <Label className="text-sm font-normal">Manage the admin panel</Label>
+                <Label className="text-xl font-bold">Admin Panel</Label>
+                <Label className="text-sm font-normal">Manage users and permissions</Label>
             </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Users</CardTitle>
+                    <CardDescription>Manage users and permissions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <UsersList />
+                </CardContent>
+            </Card>
         </div>
     )
 }
