@@ -1,5 +1,5 @@
 import yahooFinance from "yahoo-finance2";
-import type { PrismaClient, Prisma } from "@/lib/generated/prisma/client";
+import type { PrismaClient, Prisma, Currency } from "@/lib/generated/prisma/client";
 
 interface CachedPrice {
     price: number;
@@ -548,6 +548,84 @@ export async function getMonthlyEquitySeries(
     opts: { stopWhenZero?: boolean } = { stopWhenZero: true },
 ): Promise<Array<{ month: string; value: number; invested: number; dividends: number }>> {
     return yahooFinanceService.getMonthlyEquitySeries(symbol, transactions, dividends, opts);
+}
+
+// Currency conversion function
+export async function convertCurrency(
+    amount: number,
+    from: Currency,
+    to: Currency,
+    date?: string | Date
+): Promise<number> {
+    if (isNaN(amount)) {
+        throw new Error("O valor informado deve ser um número válido.");
+    }
+
+    if (from === to) return amount;
+
+    // Cotação USD→BRL
+    let usdToBrlRate: number | undefined;
+
+    if (date) {
+        const targetDate = typeof date === "string" ? new Date(date) : (date as Date);
+
+        // Busca cotação histórica usando chart() (historical() foi descontinuado)
+        // Tenta até 10 dias subsequentes caso não encontre cotação (fins de semana, feriados, etc.)
+        let quotes: any[] = [];
+        let currentDate = new Date(targetDate);
+        const maxAttempts = 10;
+        
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const period1 = Math.floor(currentDate.getTime() / 1000);
+            const period2 = Math.floor((currentDate.getTime() + 24 * 60 * 60 * 1000) / 1000); // +1 dia
+            
+            try {
+                const result = await yahooFinance.chart("BRL=X", {
+                    period1,
+                    period2,
+                    interval: "1d",
+                } as any);
+
+                quotes = ((result as any)?.quotes || []) as any[];
+
+                if (quotes.length > 0 && quotes[0].close) {
+                    break; // Encontrou cotação
+                }
+            } catch (error) {
+                // Ignora erro e tenta próximo dia
+            }
+
+            // Adiciona 1 dia e tenta novamente
+            currentDate = new Date(currentDate.getTime() + 24 * 60 * 60 * 1000);
+        }
+
+        if (quotes.length === 0 || !quotes[0].close) {
+            console.error(`Nenhuma cotação de ${from} para ${to} encontrada após ${maxAttempts} tentativas a partir da data ${date}`);
+            throw new Error(`Nenhuma cotação encontrada para a data ${date}`);
+        }
+
+        usdToBrlRate = quotes[0].close;
+    } else {
+        // Cotação atual
+        const quote = await yahooFinance.quote("BRL=X");
+        usdToBrlRate = quote.regularMarketPrice;
+    }
+
+    if (!usdToBrlRate) {
+        throw new Error("Não foi possível obter a cotação USD↔BRL.");
+    }
+
+    let converted: number;
+
+    if (from === "USD" && to === "BRL") {
+        converted = amount * usdToBrlRate;
+    } else if (from === "BRL" && to === "USD") {
+        converted = amount / usdToBrlRate;
+    } else {
+        throw new Error("Conversão não suportada.");
+    }
+
+    return Number(converted.toFixed(2));
 }
 
 // Export types and utilities for advanced usage

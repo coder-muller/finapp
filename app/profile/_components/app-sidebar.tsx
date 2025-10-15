@@ -39,10 +39,10 @@ export default function AppSidebar() {
     }
 
     useEffect(() => {
-        if (session) {
+        if (session && !isPending) {
             checkAdminPermission()
         }
-    }, [session])
+    }, [session, isPending])
 
 
     useEffect(() => {
