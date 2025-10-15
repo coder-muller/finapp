@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useInvestments } from "@/hooks/use-investments";
@@ -163,6 +163,13 @@ export default function InvestmentsPage() {
         },
     })
 
+    // Efects
+    useEffect(() => {
+        if (investments) {
+            updateInvestments();
+        }
+    }, [investments])
+
     // States
     const [isNewInvestmentOpen, setIsNewInvestmentOpen] = useState(false);
     const [isUpdateInvestmentOpen, setIsUpdateInvestmentOpen] = useState(false);
@@ -307,6 +314,13 @@ export default function InvestmentsPage() {
         }
     })
 
+    // Handle Clear Filters
+    const handleClearFilters = () => {
+        handleType("all");
+        handleStatus("active");
+        handleCurrency("all");
+    }
+
     return (
         <div className="flex flex-col gap-4">
             <div className="flex flex-col">
@@ -326,10 +340,6 @@ export default function InvestmentsPage() {
                     />
                 </InputGroup>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={() => updateInvestments()} disabled={isLoadingUpdateInvestments}>
-                        {isLoadingUpdateInvestments ? <RefreshCcwIcon className="size-4 animate-spin" /> : <RefreshCcwIcon className="size-4" />}
-                        <span className="hidden md:block">Update Data</span>
-                    </Button>
                     <Button onClick={handleNewInvestmentOpen}>
                         <PlusIcon className="size-4" />
                         <span className="hidden md:block">Add Investment</span>
@@ -346,7 +356,7 @@ export default function InvestmentsPage() {
                     <div className="flex items-center gap-2">
                         <Button variant="outline" onClick={() => setIsFilterSheetOpen(true)}>
                             <FilterIcon className="size-4" />
-                            <span className="hidden md:block">Filter</span>
+                            <span className="hidden md:block">Filters</span>
                         </Button>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -432,7 +442,7 @@ export default function InvestmentsPage() {
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center">
                                     <div className="w-full h-12 flex items-center justify-center">
-                                        <p className="text-sm text-muted-foreground">No investments found</p>
+                                        <p className="text-sm text-muted-foreground">No investments found, try changing the filters</p>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -873,6 +883,11 @@ export default function InvestmentsPage() {
                         <SheetDescription>Filter your investments</SheetDescription>
                     </SheetHeader>
                     <div className="space-y-4 px-4">
+
+                        <Button variant="outline" className="w-full" onClick={handleClearFilters}>
+                            Reset Filters
+                        </Button>
+
                         <div className="flex flex-col gap-1">
                             <Label className="text-xs">Investment Type</Label>
                             <Select value={type} onValueChange={(value) => handleType(value as "all" | InvestmentType)}>
