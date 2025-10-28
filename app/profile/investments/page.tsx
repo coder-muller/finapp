@@ -73,8 +73,6 @@ export default function InvestmentsPage() {
 
         // New Mutations
         newInvestment,
-        isLoadingNewInvestment,
-        isErrorNewInvestment,
 
         // Update Mutations
         updateInvestment,
@@ -89,7 +87,6 @@ export default function InvestmentsPage() {
         // Update Investments
         updateInvestments,
         isLoadingUpdateInvestments,
-        isErrorUpdateInvestments,
 
         // States
         search,
@@ -162,13 +159,6 @@ export default function InvestmentsPage() {
             observation: undefined,
         },
     })
-
-    // Efects
-    useEffect(() => {
-        if (investments) {
-            updateInvestments();
-        }
-    }, [])
 
     // States
     const [isNewInvestmentOpen, setIsNewInvestmentOpen] = useState(false);
@@ -340,6 +330,10 @@ export default function InvestmentsPage() {
                     />
                 </InputGroup>
                 <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => updateInvestments()} disabled={isLoadingUpdateInvestments}>
+                        {isLoadingUpdateInvestments ? <RefreshCcwIcon className="size-4 animate-spin" /> : <RefreshCcwIcon className="size-4" />}
+                        <span className="hidden md:block">{isLoadingUpdateInvestments ? "Updating..." : "Update Investments"}</span>
+                    </Button>
                     <Button onClick={handleNewInvestmentOpen}>
                         <PlusIcon className="size-4" />
                         <span className="hidden md:block">Add Investment</span>

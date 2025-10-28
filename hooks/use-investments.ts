@@ -237,6 +237,7 @@ export const useInvestments = () => {
     } = useMutation({
         mutationFn: updateInvestmentsApi,
         onSuccess: () => {
+            toast.success("Investments updated successfully");
             queryClient.invalidateQueries({ queryKey: ["investments"] });
         },
         onError: (error: unknown) => {

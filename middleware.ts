@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     const isLoggedIn = !!sessionCookie
 
     // Better Auth routes
-    if (isBetterAuthRoute) {    
+    if (isBetterAuthRoute) {
         return NextResponse.next()
     }
 
